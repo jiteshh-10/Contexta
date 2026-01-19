@@ -69,15 +69,65 @@ Contexta leverages AI (Perplexity API) to explain words in the context of your c
 
 ---
 
+## How to Use
+
+### Getting Started
+
+1. **Add a Book**
+   - Tap the "+" button or "Add a Book" on the empty library screen
+   - Enter the book title and author name
+   - Tap "Add to Library"
+
+2. **Look Up a Word**
+   - Tap on a book card to open it
+   - Type any unfamiliar word you encountered while reading
+   - Tap "Explain" to get the contextual meaning
+
+3. **View Your Word Collection**
+   - All explained words are saved under each book
+   - Tap any word to see its full explanation again
+   - Use "Edit" to modify the word and get a new explanation
+   - Use "Remove" to delete words you no longer need
+
+4. **Switch Themes**
+   - Tap the sun/moon icon in the top-right corner
+   - The app remembers your preference
+
+### What Makes Contexta Different?
+
+Unlike traditional dictionaries that give generic definitions, Contexta understands **context**:
+
+| Traditional Dictionary | Contexta |
+|----------------------|----------|
+| "Love: A strong feeling of affection" | "In *The Brothers Karamazov*, 'love' transcends romantic notions—it embodies Father Zosima's Christian imperative of **active love**, a deliberate effort to embrace neighbors amid suffering." |
+
+### 💡 Pro Tips
+
+- **Enter anything book-related** — Whether it's a word, phrase, character name, or concept from your book, Contexta will provide relevant context based on the book's themes and the author's style.
+
+- **Be specific with book titles** — The more accurate your book title and author, the better the contextual explanation.
+
+- **Use for challenging literature** — Contexta shines with classic literature, philosophy, and complex modern fiction where words carry deeper meaning.
+
+- **Build your vocabulary** — Your word collection becomes a personal glossary for each book, perfect for revisiting before discussions or exams.
+
+---
+
 ## Screenshots
 
-| Splash Screen | Library (Empty) | Library (Books) |
-|:-------------:|:---------------:|:---------------:|
-| Branded logo animation | Encouraging empty state | Book cards grid |
+<p align="center">
+  <img src="screenshots/splash_screen_light.jpeg" alt="Splash Screen Light Mode" width="200">
+  <img src="screenshots/splash_screen_dark.jpeg" alt="Splash Screen Dark Mode" width="200">
+  <img src="screenshots/library_empty.jpeg" alt="Library Empty" width="200">
+  <img src="screenshots/library_books.jpeg" alt="Library with Books" width="200">
+</p>
 
-| Book Detail | Word Explanation | Dark Mode |
-|:-----------:|:----------------:|:---------:|
-| Word input + collection | Contextual meaning | Full dark theme |
+<p align="center">
+  <img src="screenshots/word_input.jpeg" alt="Word Input" width="200">
+  <img src="screenshots/word_explanation.jpeg" alt="Word Explanation" width="200">
+  <img src="screenshots/sort_collections.jpeg" alt="Sort Collections" width="200">
+  <img src="screenshots/dark_mode.jpeg" alt="Dark Mode" width="200">
+</p>
 
 ---
 
@@ -359,5 +409,5 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ---
 
 <p align="center">
-  Made with 📚 for curious readers
+  An initiative by jiteshh-10 — empowering curious readers 📚
 </p>
