@@ -41,6 +41,7 @@ class _WordExplanationSheetState extends State<WordExplanationSheet>
   bool _isEditing = false;
   bool _isRefetching = false;
   late String _editedWord;
+  final FocusNode _editFocusNode = FocusNode();
 
   @override
   void initState() {
@@ -61,6 +62,7 @@ class _WordExplanationSheetState extends State<WordExplanationSheet>
   @override
   void dispose() {
     _animController.dispose();
+    _editFocusNode.dispose();
     super.dispose();
   }
 
@@ -130,9 +132,18 @@ class _WordExplanationSheetState extends State<WordExplanationSheet>
   }
 
   void _handleCancelEdit() {
+    _editFocusNode.unfocus();
     setState(() {
       _isEditing = false;
       _editedWord = widget.entry.word;
+    });
+  }
+
+  void _startEditing() {
+    setState(() => _isEditing = true);
+    // Focus the text field after the state update
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _editFocusNode.requestFocus();
     });
   }
 
@@ -210,29 +221,42 @@ class _WordExplanationSheetState extends State<WordExplanationSheet>
 
             // Word display or edit
             if (_isEditing) ...[
-              ContextaTextField(
-                label: 'Word',
-                placeholder: 'Enter word',
-                value: _editedWord,
-                onChanged: (v) => setState(() => _editedWord = v),
-                autofocus: true,
-              ),
-              const SizedBox(height: 16),
-              if (_isRefetching) ...[
-                const SizedBox(height: 24),
-                const LoadingDots(),
-                const SizedBox(height: 8),
-                Text(
-                  'Getting new explanation...',
-                  style: TextStyle(
-                    fontFamily: 'Inter',
-                    fontSize: 14,
-                    color: AppTheme.getTextSecondary(context),
-                  ),
-                  textAlign: TextAlign.center,
+              AnimatedSize(
+                duration: const Duration(milliseconds: 200),
+                curve: Curves.easeOut,
+                child: Column(
+                  children: [
+                    ContextaTextField(
+                      label: 'Word',
+                      placeholder: 'Enter word',
+                      value: _editedWord,
+                      onChanged: (v) => setState(() => _editedWord = v),
+                      focusNode: _editFocusNode,
+                      textInputAction: TextInputAction.done,
+                      onSubmitted:
+                          !_isRefetching && _editedWord.trim().isNotEmpty
+                              ? _handleSaveEdit
+                              : null,
+                    ),
+                    const SizedBox(height: 16),
+                    if (_isRefetching) ...[
+                      const SizedBox(height: 24),
+                      const LoadingDots(),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Getting new explanation...',
+                        style: TextStyle(
+                          fontFamily: 'Inter',
+                          fontSize: 14,
+                          color: AppTheme.getTextSecondary(context),
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 24),
+                    ],
+                  ],
                 ),
-                const SizedBox(height: 24),
-              ],
+              ),
             ] else ...[
               // Word title
               Text(
@@ -330,7 +354,7 @@ class _WordExplanationSheetState extends State<WordExplanationSheet>
                       child: SecondaryButton(
                         label: 'Edit',
                         icon: Icons.edit_outlined,
-                        onPressed: () => setState(() => _isEditing = true),
+                        onPressed: _startEditing,
                       ),
                     ),
 

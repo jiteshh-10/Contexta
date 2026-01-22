@@ -73,7 +73,8 @@ class _LibraryScreenState extends State<LibraryScreen>
     });
   }
 
-  void _showDeleteConfirmation(Book book) async {
+  /// Show delete confirmation and return result
+  Future<bool> _confirmDelete(Book book) async {
     final confirmed = await showConfirmationDialog(
       context: context,
       title: 'Remove Book',
@@ -84,9 +85,12 @@ class _LibraryScreenState extends State<LibraryScreen>
       isDestructive: true,
     );
 
-    if (confirmed) {
-      widget.onRemoveBook(book.id);
-    }
+    return confirmed;
+  }
+
+  /// Actually remove the book after animation completes
+  void _removeBook(Book book) {
+    widget.onRemoveBook(book.id);
   }
 
   @override
@@ -251,11 +255,14 @@ class _LibraryScreenState extends State<LibraryScreen>
       itemBuilder: (context, index) {
         final book = widget.books[index];
         return Padding(
+          key: ValueKey(book.id),
           padding: const EdgeInsets.only(bottom: 16),
           child: BookCard(
+            key: ValueKey('book_card_${book.id}'),
             book: book,
             onTap: () => _openBook(book),
-            onDelete: () => _showDeleteConfirmation(book),
+            onDelete: () => _confirmDelete(book),
+            onRemoved: () => _removeBook(book),
           ),
         );
       },

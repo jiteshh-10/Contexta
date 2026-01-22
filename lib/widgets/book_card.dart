@@ -7,13 +7,15 @@ import '../theme/app_theme.dart';
 class BookCard extends StatefulWidget {
   final Book book;
   final VoidCallback onTap;
-  final VoidCallback onDelete;
+  final Future<bool> Function() onDelete;
+  final VoidCallback? onRemoved;
 
   const BookCard({
     super.key,
     required this.book,
     required this.onTap,
     required this.onDelete,
+    this.onRemoved,
   });
 
   @override
@@ -25,6 +27,32 @@ class _BookCardState extends State<BookCard>
   bool _isPressed = false;
   bool _isHovered = false;
   bool _isDeleting = false;
+  late AnimationController _deleteAnimController;
+  late Animation<double> _slideAnimation;
+  late Animation<double> _fadeAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _deleteAnimController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 300),
+    );
+
+    _slideAnimation = Tween<double>(begin: 0.0, end: -100.0).animate(
+      CurvedAnimation(parent: _deleteAnimController, curve: Curves.easeInOut),
+    );
+
+    _fadeAnimation = Tween<double>(begin: 1.0, end: 0.0).animate(
+      CurvedAnimation(parent: _deleteAnimController, curve: Curves.easeOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _deleteAnimController.dispose();
+    super.dispose();
+  }
 
   double get _scale {
     if (_isPressed) return AppTheme.cardPressedScale;
@@ -36,9 +64,14 @@ class _BookCardState extends State<BookCard>
   Widget build(BuildContext context) {
     final isDark = AppTheme.isDark(context);
 
-    return AnimatedOpacity(
-      duration: AppTheme.sheetAnimDuration,
-      opacity: _isDeleting ? 0.0 : 1.0,
+    return AnimatedBuilder(
+      animation: _deleteAnimController,
+      builder: (context, child) {
+        return Transform.translate(
+          offset: Offset(_slideAnimation.value, 0),
+          child: Opacity(opacity: _fadeAnimation.value, child: child),
+        );
+      },
       child: MouseRegion(
         onEnter: (_) => setState(() => _isHovered = true),
         onExit: (_) => setState(() => _isHovered = false),
@@ -217,9 +250,15 @@ class _BookCardState extends State<BookCard>
                         // Delete button
                         _DeleteButton(
                           onTap: () async {
-                            setState(() => _isDeleting = true);
-                            await Future.delayed(AppTheme.sheetAnimDuration);
-                            widget.onDelete();
+                            if (_isDeleting) return;
+                            // First show confirmation, then animate if confirmed
+                            final confirmed = await widget.onDelete();
+                            if (confirmed && mounted) {
+                              setState(() => _isDeleting = true);
+                              await _deleteAnimController.forward();
+                              // Remove from list after animation completes
+                              widget.onRemoved?.call();
+                            }
                           },
                         ),
                       ],

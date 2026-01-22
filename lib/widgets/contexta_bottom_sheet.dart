@@ -45,64 +45,70 @@ class _BottomSheetContent extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final maxHeight = MediaQuery.of(context).size.height * 0.85;
+    final bottomInset = MediaQuery.of(context).viewInsets.bottom;
 
-    return Container(
-      constraints: BoxConstraints(maxHeight: maxHeight),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
-        borderRadius: const BorderRadius.vertical(
-          top: Radius.circular(AppTheme.radiusSheet),
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.15),
-            blurRadius: 20,
-            offset: const Offset(0, -4),
+    return AnimatedPadding(
+      duration: const Duration(milliseconds: 150),
+      curve: Curves.easeOut,
+      padding: EdgeInsets.only(bottom: bottomInset),
+      child: Container(
+        constraints: BoxConstraints(maxHeight: maxHeight),
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.surface,
+          borderRadius: const BorderRadius.vertical(
+            top: Radius.circular(AppTheme.radiusSheet),
           ),
-        ],
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // Header with drag handle and optional close button
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                // Drag handle
-                Container(
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: AppTheme.getBorder(context),
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-
-                // Close button
-                if (showCloseButton)
-                  Align(
-                    alignment: Alignment.centerRight,
-                    child: _CloseButton(
-                      onTap: () {
-                        onClose?.call();
-                        Navigator.of(context).pop();
-                      },
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.15),
+              blurRadius: 20,
+              offset: const Offset(0, -4),
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Header with drag handle and optional close button
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  // Drag handle
+                  Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: AppTheme.getBorder(context),
+                      borderRadius: BorderRadius.circular(2),
                     ),
                   ),
-              ],
-            ),
-          ),
 
-          // Content
-          Flexible(
-            child: SingleChildScrollView(
-              physics: const ClampingScrollPhysics(),
-              child: child,
+                  // Close button
+                  if (showCloseButton)
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: _CloseButton(
+                        onTap: () {
+                          onClose?.call();
+                          Navigator.of(context).pop();
+                        },
+                      ),
+                    ),
+                ],
+              ),
             ),
-          ),
-        ],
+
+            // Content
+            Flexible(
+              child: SingleChildScrollView(
+                physics: const ClampingScrollPhysics(),
+                child: child,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
