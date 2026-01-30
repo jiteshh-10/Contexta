@@ -24,21 +24,33 @@ class AppTheme {
   static const Color success = Color(0xFF4B8B5E);
 
   // ─────────────────────────────────────────────────────────────────
-  // DARK MODE COLORS (Paper-like warmth)
+  // DARK MODE COLORS (Paper-warm night reading)
+  // Philosophy: Old paper, ink absorbed into parchment, quiet concentration
   // ─────────────────────────────────────────────────────────────────
   static const Color darkBackground = Color(0xFF1E1B18); // Deep brown-black
+  static const Color darkBackgroundElevated = Color(
+    0xFF252220,
+  ); // Slightly lifted
   static const Color darkPaper = Color(0xFF2A2520); // Dark parchment
-  static const Color darkPaperElevated = Color(0xFF332E28);
+  static const Color darkPaperElevated = Color(0xFF332E28); // Cards, sheets
+  static const Color darkPaperHighest = Color(0xFF3B3530); // Highest elevation
   static const Color darkTextPrimary = Color(0xFFEDE6D8); // Warm off-white
   static const Color darkTextSecondary = Color(0xFFB5AD9E); // Muted taupe
-  static const Color darkTextMuted = Color(0xFF8A847A);
-  static const Color darkInkBlue = Color(0xFF7B8AB5); // Brighter for visibility
-  static const Color darkInkBluePressed = Color(0xFF6A7AA3);
-  static const Color darkInkBlueHover = Color(0xFF8B9AC5);
-  static const Color darkBorder = Color(0xFF3D3832);
-  static const Color darkOverlay = Color.fromRGBO(237, 230, 216, 0.05);
-  static const Color darkError = Color(0xFFCF6B6B);
-  static const Color darkSuccess = Color(0xFF6BAB7E);
+  static const Color darkTextMuted = Color(0xFF8A847A); // Hints, timestamps
+  static const Color darkInkBlue = Color(0xFF6C7A9A); // Desaturated for night
+  static const Color darkInkBluePressed = Color(0xFF5A6685); // Pressed state
+  static const Color darkInkBlueHover = Color(0xFF7D8AA8); // Hover state
+  static const Color darkBorder = Color(0xFF3D3832); // Soft dividers
+  static const Color darkBorderSubtle = Color(0xFF332E28); // Even softer
+  static const Color darkOverlay = Color.fromRGBO(
+    237,
+    230,
+    216,
+    0.05,
+  ); // Warm overlay
+  static const Color darkOverlayPressed = Color.fromRGBO(237, 230, 216, 0.08);
+  static const Color darkError = Color(0xFFCF6B6B); // Muted error
+  static const Color darkSuccess = Color(0xFF6BAB7E); // Muted success
 
   // ─────────────────────────────────────────────────────────────────
   // ANIMATION DURATIONS
@@ -313,18 +325,21 @@ class AppTheme {
     ),
     cardTheme: CardThemeData(
       color: darkPaper,
-      elevation: 4,
-      shadowColor: Colors.black.withValues(alpha: 0.3),
+      elevation: 0, // Remove shadows, rely on color layering
+      shadowColor: Colors.transparent,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(radiusLarge),
       ),
     ),
-    dividerTheme: const DividerThemeData(color: darkBorder, thickness: 1),
+    dividerTheme: DividerThemeData(
+      color: darkBorder.withValues(alpha: 0.7), // Softer dividers
+      thickness: 1,
+    ),
     floatingActionButtonTheme: FloatingActionButtonThemeData(
       backgroundColor: darkInkBlue,
       foregroundColor: darkTextPrimary,
-      elevation: 6,
-      highlightElevation: 8,
+      elevation: 2, // Reduced from 6
+      highlightElevation: 4, // Reduced from 8
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(radiusLarge),
       ),
@@ -526,11 +541,32 @@ class AppTheme {
     return Theme.of(context).brightness == Brightness.dark ? darkPaper : paper;
   }
 
+  /// Get elevated paper color (for cards, sheets)
+  static Color getPaperElevated(BuildContext context) {
+    return Theme.of(context).brightness == Brightness.dark
+        ? darkPaperElevated
+        : paper;
+  }
+
+  /// Get highest elevation surface color
+  static Color getSurfaceHighest(BuildContext context) {
+    return Theme.of(context).brightness == Brightness.dark
+        ? darkPaperHighest
+        : beigeDarker;
+  }
+
   /// Get appropriate border color based on brightness
   static Color getBorder(BuildContext context) {
     return Theme.of(context).brightness == Brightness.dark
         ? darkBorder
         : border;
+  }
+
+  /// Get subtle border color (even softer separation)
+  static Color getBorderSubtle(BuildContext context) {
+    return Theme.of(context).brightness == Brightness.dark
+        ? darkBorderSubtle
+        : border.withValues(alpha: 0.5);
   }
 
   /// Get appropriate muted text color based on brightness
@@ -547,8 +583,76 @@ class AppTheme {
         : textSecondary;
   }
 
+  /// Get overlay color for press/hover states
+  static Color getOverlay(BuildContext context) {
+    return Theme.of(context).brightness == Brightness.dark
+        ? darkOverlay
+        : overlay;
+  }
+
+  /// Get pressed overlay color (slightly stronger)
+  static Color getOverlayPressed(BuildContext context) {
+    return Theme.of(context).brightness == Brightness.dark
+        ? darkOverlayPressed
+        : const Color.fromRGBO(0, 0, 0, 0.08);
+  }
+
   /// Check if dark mode is active
   static bool isDark(BuildContext context) {
     return Theme.of(context).brightness == Brightness.dark;
+  }
+
+  /// Get card shadow (reduced in dark mode)
+  static List<BoxShadow> getCardShadow(BuildContext context) {
+    if (isDark(context)) {
+      // Very subtle shadow in dark mode
+      return [
+        BoxShadow(
+          color: Colors.black.withValues(alpha: 0.15),
+          blurRadius: 4,
+          offset: const Offset(0, 2),
+        ),
+      ];
+    }
+    return [
+      BoxShadow(
+        color: charcoal.withValues(alpha: 0.1),
+        blurRadius: 8,
+        offset: const Offset(0, 4),
+      ),
+    ];
+  }
+
+  /// Get subtle elevation shadow (almost invisible in dark mode)
+  static List<BoxShadow> getSubtleShadow(BuildContext context) {
+    if (isDark(context)) {
+      return []; // No shadow in dark mode, use color layering
+    }
+    return [
+      BoxShadow(
+        color: charcoal.withValues(alpha: 0.06),
+        blurRadius: 4,
+        offset: const Offset(0, 2),
+      ),
+    ];
+  }
+
+  /// Build a gradient divider (subtle fade in/out)
+  static Widget buildGradientDivider(BuildContext context) {
+    final dividerColor = getBorder(context);
+    return Container(
+      height: 1,
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            Colors.transparent,
+            dividerColor.withValues(alpha: isDark(context) ? 0.5 : 0.7),
+            dividerColor.withValues(alpha: isDark(context) ? 0.5 : 0.7),
+            Colors.transparent,
+          ],
+          stops: const [0.0, 0.15, 0.85, 1.0],
+        ),
+      ),
+    );
   }
 }

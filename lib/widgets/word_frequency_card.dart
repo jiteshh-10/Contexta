@@ -72,18 +72,26 @@ class _WordFrequencyCardState extends State<WordFrequencyCard>
 
     return Container(
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
+        color:
+            isDark
+                ? AppTheme.darkPaperElevated
+                : Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(AppTheme.radiusLarge),
-        border: Border.all(color: AppTheme.getBorder(context), width: 1),
-        boxShadow: [
-          BoxShadow(
-            color: (isDark ? Colors.black : AppTheme.charcoal).withValues(
-              alpha: 0.06,
-            ),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        border: Border.all(
+          color:
+              isDark ? AppTheme.darkBorderSubtle : AppTheme.getBorder(context),
+          width: 1,
+        ),
+        boxShadow:
+            isDark
+                ? [] // No shadow in dark mode
+                : [
+                  BoxShadow(
+                    color: AppTheme.charcoal.withValues(alpha: 0.06),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,

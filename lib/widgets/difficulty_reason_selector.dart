@@ -311,7 +311,7 @@ class _DifficultyChipState extends State<_DifficultyChip>
               width: widget.isSelected ? 1.5 : 1,
             ),
             boxShadow:
-                widget.isSelected
+                widget.isSelected && !widget.isDark
                     ? [
                       BoxShadow(
                         color: reasonColor.withValues(alpha: 0.2),

@@ -189,16 +189,18 @@ class _GlobalSearchBarState extends State<GlobalSearchBar>
                           : AppTheme.getBorder(context),
                   width: _isExpanded ? 1.5 : 1,
                 ),
-                boxShadow: [
-                  BoxShadow(
-                    color: (isDark ? Colors.black : AppTheme.charcoal)
-                        .withValues(
-                          alpha: 0.08 + (0.04 * _expandAnimation.value),
-                        ),
-                    blurRadius: 8 + (8 * _expandAnimation.value),
-                    offset: Offset(0, 2 + (2 * _expandAnimation.value)),
-                  ),
-                ],
+                boxShadow:
+                    isDark
+                        ? [] // No shadow in dark mode
+                        : [
+                          BoxShadow(
+                            color: AppTheme.charcoal.withValues(
+                              alpha: 0.08 + (0.04 * _expandAnimation.value),
+                            ),
+                            blurRadius: 8 + (8 * _expandAnimation.value),
+                            offset: Offset(0, 2 + (2 * _expandAnimation.value)),
+                          ),
+                        ],
               ),
               child: Row(
                 children: [
@@ -318,17 +320,19 @@ class _GlobalSearchBarState extends State<GlobalSearchBar>
                 margin: const EdgeInsets.only(top: 8),
                 constraints: const BoxConstraints(maxHeight: 320),
                 decoration: BoxDecoration(
-                  color: isDark ? AppTheme.darkPaper : AppTheme.paper,
+                  color: isDark ? AppTheme.darkPaperElevated : AppTheme.paper,
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(color: AppTheme.getBorder(context)),
-                  boxShadow: [
-                    BoxShadow(
-                      color: (isDark ? Colors.black : AppTheme.charcoal)
-                          .withValues(alpha: 0.12),
-                      blurRadius: 16,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
+                  boxShadow:
+                      isDark
+                          ? [] // No shadow in dark mode
+                          : [
+                            BoxShadow(
+                              color: AppTheme.charcoal.withValues(alpha: 0.12),
+                              blurRadius: 16,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
                 ),
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(16),

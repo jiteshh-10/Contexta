@@ -426,17 +426,25 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
+        color:
+            isDark
+                ? AppTheme.darkPaperElevated
+                : Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(AppTheme.radiusLarge),
-        boxShadow: [
-          BoxShadow(
-            color: (isDark ? Colors.black : AppTheme.charcoal).withValues(
-              alpha: 0.1,
-            ),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        border:
+            isDark
+                ? Border.all(color: AppTheme.darkBorderSubtle, width: 1)
+                : null,
+        boxShadow:
+            isDark
+                ? [] // No shadow in dark mode
+                : [
+                  BoxShadow(
+                    color: AppTheme.charcoal.withValues(alpha: 0.1),
+                    blurRadius: 12,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,

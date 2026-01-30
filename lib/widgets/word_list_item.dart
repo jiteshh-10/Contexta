@@ -41,19 +41,17 @@ class _WordListItemState extends State<WordListItem> {
           decoration: BoxDecoration(
             color:
                 _isPressed
-                    ? Theme.of(
-                      context,
-                    ).colorScheme.primary.withValues(alpha: 0.08)
+                    ? AppTheme.getOverlayPressed(context)
                     : _isHovered
-                    ? Theme.of(
-                      context,
-                    ).colorScheme.primary.withValues(alpha: 0.04)
+                    ? AppTheme.getOverlay(context)
                     : Colors.transparent,
             border:
                 widget.showDivider
                     ? Border(
                       bottom: BorderSide(
-                        color: AppTheme.getBorder(context),
+                        color: AppTheme.getBorder(context).withValues(
+                          alpha: AppTheme.isDark(context) ? 0.7 : 1.0,
+                        ),
                         width: 1,
                       ),
                     )

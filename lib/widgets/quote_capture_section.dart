@@ -263,6 +263,8 @@ class _QuoteCaptureSectionState extends State<QuoteCaptureSection>
 
   /// Build the expanded input state
   Widget _buildExpandedInput() {
+    final isDark = AppTheme.isDark(context);
+
     return FadeTransition(
       opacity: _fadeAnimation,
       child: SizeTransition(
@@ -274,9 +276,11 @@ class _QuoteCaptureSectionState extends State<QuoteCaptureSection>
             // Input area
             Container(
               decoration: BoxDecoration(
-                color: Theme.of(
-                  context,
-                ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+                color:
+                    isDark
+                        ? AppTheme.darkPaperHighest.withValues(alpha: 0.7)
+                        : Theme.of(context).colorScheme.surfaceContainerHighest
+                            .withValues(alpha: 0.5),
                 borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
                 border: Border.all(
                   color: AppTheme.getBorder(context),

@@ -97,17 +97,23 @@ class _BookCardState extends State<BookCard>
                     decoration: BoxDecoration(
                       color:
                           isDark
-                              ? AppTheme.darkPaper.withValues(alpha: 0.5)
+                              ? AppTheme.darkPaperElevated.withValues(
+                                alpha: 0.4,
+                              )
                               : AppTheme.paper.withValues(alpha: 0.6),
                       borderRadius: BorderRadius.circular(AppTheme.radiusLarge),
-                      boxShadow: [
-                        BoxShadow(
-                          color: (isDark ? Colors.black : AppTheme.charcoal)
-                              .withValues(alpha: 0.08),
-                          blurRadius: 4,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
+                      boxShadow:
+                          isDark
+                              ? [] // No shadows in dark mode
+                              : [
+                                BoxShadow(
+                                  color: AppTheme.charcoal.withValues(
+                                    alpha: 0.08,
+                                  ),
+                                  blurRadius: 4,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
                     ),
                   ),
                 ),
@@ -122,17 +128,23 @@ class _BookCardState extends State<BookCard>
                     decoration: BoxDecoration(
                       color:
                           isDark
-                              ? AppTheme.darkPaper.withValues(alpha: 0.7)
+                              ? AppTheme.darkPaperElevated.withValues(
+                                alpha: 0.6,
+                              )
                               : AppTheme.paper.withValues(alpha: 0.8),
                       borderRadius: BorderRadius.circular(AppTheme.radiusLarge),
-                      boxShadow: [
-                        BoxShadow(
-                          color: (isDark ? Colors.black : AppTheme.charcoal)
-                              .withValues(alpha: 0.1),
-                          blurRadius: 3,
-                          offset: const Offset(0, 1),
-                        ),
-                      ],
+                      boxShadow:
+                          isDark
+                              ? [] // No shadows in dark mode
+                              : [
+                                BoxShadow(
+                                  color: AppTheme.charcoal.withValues(
+                                    alpha: 0.1,
+                                  ),
+                                  blurRadius: 3,
+                                  offset: const Offset(0, 1),
+                                ),
+                              ],
                     ),
                   ),
                 ),
@@ -140,16 +152,30 @@ class _BookCardState extends State<BookCard>
                 // Main card
                 Container(
                   decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.surface,
+                    color:
+                        isDark
+                            ? AppTheme.darkPaper
+                            : Theme.of(context).colorScheme.surface,
                     borderRadius: BorderRadius.circular(AppTheme.radiusLarge),
-                    boxShadow: [
-                      BoxShadow(
-                        color: (isDark ? Colors.black : AppTheme.charcoal)
-                            .withValues(alpha: _isPressed ? 0.1 : 0.15),
-                        blurRadius: _isPressed ? 4 : 8,
-                        offset: Offset(0, _isPressed ? 2 : 4),
-                      ),
-                    ],
+                    border:
+                        isDark
+                            ? Border.all(
+                              color: AppTheme.darkBorderSubtle,
+                              width: 1,
+                            )
+                            : null,
+                    boxShadow:
+                        isDark
+                            ? [] // Remove shadows in dark mode, use border
+                            : [
+                              BoxShadow(
+                                color: AppTheme.charcoal.withValues(
+                                  alpha: _isPressed ? 0.1 : 0.15,
+                                ),
+                                blurRadius: _isPressed ? 4 : 8,
+                                offset: Offset(0, _isPressed ? 2 : 4),
+                              ),
+                            ],
                   ),
                   child: Padding(
                     padding: const EdgeInsets.all(16),

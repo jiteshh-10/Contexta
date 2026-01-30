@@ -108,7 +108,7 @@ class _ContextaTextFieldState extends State<ContextaTextField> {
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
             boxShadow:
-                _hasFocus && !hasError
+                _hasFocus && !hasError && !AppTheme.isDark(context)
                     ? [
                       BoxShadow(
                         color: Theme.of(

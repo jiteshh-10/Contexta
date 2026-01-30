@@ -216,7 +216,7 @@ class _LibraryScreenState extends State<LibraryScreen>
     // Library view
     return Scaffold(
       appBar: ContextaAppBar(
-        title: 'My Books',
+        title: 'My Shelf',
         showBackButton: false,
         rightAction: _SettingsButton(onTap: _showSettings),
       ),
@@ -276,25 +276,28 @@ class _LibraryScreenState extends State<LibraryScreen>
               decoration: BoxDecoration(
                 color: Theme.of(context).colorScheme.primary,
                 borderRadius: BorderRadius.circular(AppTheme.radiusLarge),
-                boxShadow: [
-                  // Regular shadow
-                  BoxShadow(
-                    color: Theme.of(
-                      context,
-                    ).colorScheme.primary.withValues(alpha: 0.3),
-                    blurRadius: 12,
-                    offset: const Offset(0, 4),
-                  ),
-                  // Glow effect for dark mode
-                  if (isDark)
-                    BoxShadow(
-                      color: Theme.of(
-                        context,
-                      ).colorScheme.primary.withValues(alpha: 0.4),
-                      blurRadius: 20,
-                      spreadRadius: 2,
-                    ),
-                ],
+                boxShadow:
+                    isDark
+                        ? [
+                          // Subtle glow for dark mode
+                          BoxShadow(
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.primary.withValues(alpha: 0.2),
+                            blurRadius: 8,
+                            spreadRadius: 0,
+                          ),
+                        ]
+                        : [
+                          // Regular shadow for light mode
+                          BoxShadow(
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.primary.withValues(alpha: 0.3),
+                            blurRadius: 12,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
               ),
               child: Icon(
                 Icons.menu_book_outlined,

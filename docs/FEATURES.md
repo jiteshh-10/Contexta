@@ -1,6 +1,6 @@
 # Contexta - Complete Feature Documentation
 
-> **Version:** 1.7.0  
+> **Version:** 1.8.0  
 > **Last Updated:** January 30, 2026  
 > **Authors:** Development Team  
 > **Repository:** github.com/jiteshh-10/Contexta
@@ -65,10 +65,17 @@
     - [UI Components](#103-ui-components)
     - [Data Model](#104-data-model)
     - [Database](#105-database)
-11. [API Reference](#11-api-reference)
-12. [Project Architecture](#12-project-architecture)
-13. [Troubleshooting](#13-troubleshooting)
-14. [Changelog](#14-changelog)
+11. [Dark Mode Refinement (v1.8.0)](#11-dark-mode-refinement-v180)
+    - [Overview](#111-overview)
+    - [Design Philosophy](#112-design-philosophy)
+    - [Color System](#113-color-system)
+    - [Shadow Strategy](#114-shadow-strategy)
+    - [Helper Methods](#115-helper-methods)
+    - [Updated Components](#116-updated-components)
+12. [API Reference](#12-api-reference)
+13. [Project Architecture](#13-project-architecture)
+14. [Troubleshooting](#14-troubleshooting)
+15. [Changelog](#15-changelog)
 
 ---
 
@@ -2389,7 +2396,219 @@ Everything is **user-remembered**, not scraped.
 
 ---
 
-## 11. API Reference
+## 11. Dark Mode Refinement (v1.8.0)
+
+### 11.1 Overview
+
+A comprehensive dark mode polish that transforms the existing dark theme into a premium "paper-warm night reading" experience. This update focuses on reducing visual harshness, adding warmth, and creating the feel of reading under a warm lamp.
+
+**Goals:**
+- Reduce contrast harshness (no pure black/white)
+- Warmer, paper-like text colors
+- Softer dividers and borders
+- Paper surface layering for depth
+- Remove heavy shadows, use color layering instead
+- Desaturated accent colors for night comfort
+- Warm overlays for interaction states
+
+### 11.2 Design Philosophy
+
+> *"Like reading at night under a warm lamp. Old paper, ink absorbed into parchment, reduced eye strain."*
+
+The refinement follows the principle that **premium apps don't shout** — they whisper. Instead of bold contrasts and heavy shadows, Contexta's dark mode now uses:
+
+1. **Layered surfaces** instead of shadows for depth
+2. **Warm tones** instead of cool grays
+3. **Subtle borders** instead of drop shadows
+4. **Desaturated accents** that don't strain eyes at night
+
+### 11.3 Color System
+
+#### Core Dark Palette
+
+| Token | Hex | Purpose |
+|-------|-----|---------|
+| `darkBackground` | `#1E1B18` | Deep brown-black base |
+| `darkBackgroundElevated` | `#252220` | Slightly lifted background |
+| `darkPaper` | `#2A2622` | Card surfaces |
+| `darkPaperElevated` | `#332E28` | Elevated cards, sheets |
+| `darkPaperHighest` | `#3B3530` | Highest elevation (inputs) |
+
+#### Text Colors
+
+| Token | Hex | Purpose |
+|-------|-----|---------|
+| `darkTextPrimary` | `#EDE6D8` | Warm off-white for main text |
+| `darkTextSecondary` | `#B5AD9E` | Muted taupe for secondary |
+| `darkTextMuted` | `#8A847A` | Hints, timestamps, captions |
+
+#### Border Colors
+
+| Token | Hex | Purpose |
+|-------|-----|---------|
+| `darkBorder` | `#3D3832` | Standard dividers |
+| `darkBorderSubtle` | `#332E28` | Very soft dividers |
+
+#### Accent & Overlay
+
+| Token | Value | Purpose |
+|-------|-------|---------|
+| `darkAccent` | `#6C7A9A` | Desaturated blue (was `#7B8AB5`) |
+| `darkOverlay` | `rgba(237, 230, 216, 0.05)` | Warm hover state |
+| `darkOverlayPressed` | `rgba(237, 230, 216, 0.08)` | Warm pressed state |
+
+### 11.4 Shadow Strategy
+
+**Before (v1.7.0):** Heavy black shadows on all cards, buttons, sheets
+
+**After (v1.8.0):** Color layering + subtle borders
+
+#### The Principle
+
+In dark mode, shadows feel like "mud" — they don't lift elements, they just create visual noise. Instead, we use:
+
+1. **Lighter surface colors** to show elevation
+2. **Subtle border accents** for definition
+3. **No BoxShadow** in dark mode
+
+#### Implementation Pattern
+
+```dart
+// Before: Same shadow, just more opaque
+boxShadow: [
+  BoxShadow(
+    color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.1),
+    blurRadius: 8,
+  ),
+]
+
+// After: No shadow in dark, layered surface instead
+boxShadow: isDark
+    ? [] // No shadow
+    : [BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 8)],
+border: isDark
+    ? Border.all(color: AppTheme.darkBorderSubtle, width: 0.5)
+    : null,
+```
+
+### 11.5 Helper Methods
+
+New helper methods in `AppTheme` for consistent theming:
+
+```dart
+// Surface elevation helpers
+static Color getPaperElevated(BuildContext context)
+static Color getSurfaceHighest(BuildContext context)
+
+// Border helpers
+static Color getBorderSubtle(BuildContext context)
+
+// Overlay helpers
+static Color getOverlay(BuildContext context)
+static Color getOverlayPressed(BuildContext context)
+
+// Shadow helpers (returns empty list in dark mode)
+static List<BoxShadow> getCardShadow(BuildContext context)
+static List<BoxShadow> getSubtleShadow(BuildContext context)
+
+// Divider helpers
+static Widget buildGradientDivider(BuildContext context)
+```
+
+### 11.6 Updated Components
+
+#### Cards (`book_card.dart`)
+- Removed all BoxShadow in dark mode
+- Stacked paper layers use same surface color
+- Added subtle border for definition
+
+#### Bottom Sheet (`contexta_bottom_sheet.dart`)
+- Surface: `darkPaperElevated`
+- Border: Subtle top/left/right border
+- Shadow: Empty in dark mode
+
+#### Dialog (`contexta_dialog.dart`)
+- Surface: `darkPaperElevated`
+- Border: `darkBorderSubtle` all around
+- Shadow: Empty in dark mode
+
+#### Word List Item (`word_list_item.dart`)
+- Hover: Uses `AppTheme.getOverlay(context)`
+- Pressed: Uses `AppTheme.getOverlayPressed(context)`
+- Divider: 0.7 opacity in dark mode
+
+#### Book Detail Input (`book_detail_screen.dart`)
+- Input card: `darkPaperElevated`
+- Border: `darkBorderSubtle`
+- Shadow: Empty in dark mode
+
+#### FAB (`library_screen.dart`)
+- Reduced glow to single shadow
+- Alpha: 0.2, blur: 8 (was much higher)
+
+#### Global Search (`global_search.dart`)
+- Search bar: No shadow in dark
+- Results dropdown: `darkPaperElevated`, no shadow
+
+#### Word Frequency Card (`word_frequency_card.dart`)
+- Surface: `darkPaperElevated`
+- Border: `darkBorderSubtle`
+- Shadow: Empty in dark mode
+
+#### Export Options (`export_options_sheet.dart`)
+- Format cards: No shadow when selected in dark
+- Export button: No shadow in dark
+
+#### Text Field (`contexta_text_field.dart`)
+- Focus shadow: Disabled in dark mode
+
+#### Selectors
+- `explanation_level_selector.dart`: No indicator shadow in dark
+- `difficulty_reason_selector.dart`: No selected chip shadow in dark
+
+### 11.7 Theme Configuration Changes
+
+```dart
+// Card Theme
+cardTheme: CardThemeData(
+  elevation: isDark ? 0 : 2,  // No elevation in dark
+  shadowColor: isDark ? Colors.transparent : charcoal.withValues(alpha: 0.08),
+),
+
+// FAB Theme
+floatingActionButtonTheme: FloatingActionButtonThemeData(
+  elevation: isDark ? 2 : 6,  // Reduced elevation in dark
+),
+
+// Divider Theme
+dividerTheme: DividerThemeData(
+  color: (isDark ? darkBorder : border).withValues(alpha: isDark ? 0.7 : 1.0),
+),
+```
+
+### 11.8 Testing Dark Mode
+
+To verify the refinement:
+
+1. **Color Temperature**: UI should feel warm, not cold
+2. **Elevation**: Cards should feel layered by color, not shadow
+3. **Contrast**: Text should be readable but not glaring
+4. **Accent**: Blue should be muted, not vibrant
+5. **Interactions**: Hover/press states should have warm overlay
+
+### 11.9 What This Feature Is NOT
+
+❌ Not a complete theme redesign
+❌ Not new features
+❌ Not changing light mode
+❌ Not adding new colors to light mode
+❌ Not performance-related
+
+This is **polish** — making what exists feel premium.
+
+---
+
+## 12. API Reference
 
 ### PerplexityService
 
@@ -2446,7 +2665,7 @@ ExplanationLevel loadExplanationLevel();
 
 ---
 
-## 12. Project Architecture
+## 13. Project Architecture
 
 ### High-Level Architecture
 
@@ -2562,7 +2781,7 @@ class _MyAppState extends State<MyApp> {
 
 ---
 
-## 13. Troubleshooting
+## 14. Troubleshooting
 
 ### Common Issues
 
@@ -2727,9 +2946,55 @@ dependencies:
 
 ---
 
-## 14. Changelog
+## 15. Changelog
 
 All notable changes to Contexta are documented here.
+
+### [1.8.0] - 2026-01-30
+
+#### Polish - Dark Mode Refinement
+*Commit: polish: Refine dark mode for premium night reading*
+
+- **Color System Update**
+  - Added `darkBackgroundElevated` (#252220) for lifted backgrounds
+  - Added `darkPaperHighest` (#3B3530) for highest elevation
+  - Added `darkBorderSubtle` (#332E28) for very soft dividers
+  - Added `darkOverlayPressed` for warm pressed states
+  - Desaturated accent color (#7B8AB5 → #6C7A9A)
+
+- **Shadow Strategy**
+  - Removed all BoxShadow in dark mode across widgets
+  - Use color layering instead of shadows for depth
+  - Added subtle borders for card definition
+  - Reduced FAB glow intensity
+
+- **New Theme Helpers**
+  - `getPaperElevated()` - elevated surface color
+  - `getSurfaceHighest()` - highest elevation color
+  - `getBorderSubtle()` - very soft border color
+  - `getOverlay()` / `getOverlayPressed()` - warm interaction overlays
+  - `getCardShadow()` / `getSubtleShadow()` - smart shadow helpers
+  - `buildGradientDivider()` - fade-in/out divider widget
+
+- **Updated Components**
+  - BookCard: No shadow, subtle border
+  - BottomSheet: darkPaperElevated, border instead of shadow
+  - Dialog: darkPaperElevated, border instead of shadow
+  - WordListItem: Warm overlays for interactions
+  - BookDetailScreen: Input card uses elevated surface
+  - GlobalSearch: No shadows, elevated surfaces
+  - WordFrequencyCard: No shadow, subtle border
+  - ExportOptionsSheet: No shadows in dark
+  - TextField: No focus shadow in dark
+  - Selectors: No indicator shadows in dark
+
+- **Philosophy**
+  - "Like reading under a warm lamp"
+  - Premium apps whisper, they don't shout
+  - Layered surfaces instead of heavy shadows
+  - Warm tones instead of cool grays
+
+---
 
 ### [1.7.0] - 2026-01-30
 

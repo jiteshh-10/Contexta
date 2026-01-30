@@ -431,7 +431,7 @@ class _FormatOptionState extends State<_FormatOption> {
               width: widget.isSelected ? 1.5 : 1,
             ),
             boxShadow:
-                widget.isSelected
+                widget.isSelected && !isDark
                     ? [
                       BoxShadow(
                         color: Theme.of(
@@ -526,15 +526,18 @@ class _ExportButtonState extends State<_ExportButton> {
             decoration: BoxDecoration(
               color: Theme.of(context).colorScheme.primary,
               borderRadius: BorderRadius.circular(16),
-              boxShadow: [
-                BoxShadow(
-                  color: Theme.of(
-                    context,
-                  ).colorScheme.primary.withValues(alpha: 0.3),
-                  blurRadius: 12,
-                  offset: const Offset(0, 4),
-                ),
-              ],
+              boxShadow:
+                  AppTheme.isDark(context)
+                      ? [] // No shadow in dark mode
+                      : [
+                        BoxShadow(
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.primary.withValues(alpha: 0.3),
+                          blurRadius: 12,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
             ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,

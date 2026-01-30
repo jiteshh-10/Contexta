@@ -56,19 +56,31 @@ class _DialogContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = AppTheme.isDark(context);
+
     return Container(
       constraints: const BoxConstraints(maxWidth: 350, minWidth: 280),
       margin: const EdgeInsets.symmetric(horizontal: 24),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
+        color:
+            isDark
+                ? AppTheme.darkPaperElevated
+                : Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(AppTheme.radiusXLarge),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.2),
-            blurRadius: 24,
-            offset: const Offset(0, 8),
-          ),
-        ],
+        border:
+            isDark
+                ? Border.all(color: AppTheme.darkBorderSubtle, width: 1)
+                : null,
+        boxShadow:
+            isDark
+                ? [] // No shadow in dark mode
+                : [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.2),
+                    blurRadius: 24,
+                    offset: const Offset(0, 8),
+                  ),
+                ],
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,

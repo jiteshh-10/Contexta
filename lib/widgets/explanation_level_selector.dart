@@ -134,15 +134,25 @@ class _ExplanationLevelSelectorState extends State<ExplanationLevelSelector>
                           borderRadius: BorderRadius.circular(
                             AppTheme.radiusSmall + 4,
                           ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(
-                                alpha: isDark ? 0.3 : 0.08,
-                              ),
-                              blurRadius: 8,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
+                          border:
+                              isDark
+                                  ? Border.all(
+                                    color: AppTheme.darkBorderSubtle,
+                                    width: 0.5,
+                                  )
+                                  : null,
+                          boxShadow:
+                              isDark
+                                  ? [] // No shadow in dark mode
+                                  : [
+                                    BoxShadow(
+                                      color: Colors.black.withValues(
+                                        alpha: 0.08,
+                                      ),
+                                      blurRadius: 8,
+                                      offset: const Offset(0, 2),
+                                    ),
+                                  ],
                         ),
                       ),
                     );

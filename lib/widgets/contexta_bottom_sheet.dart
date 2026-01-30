@@ -54,17 +54,37 @@ class _BottomSheetContent extends StatelessWidget {
       child: Container(
         constraints: BoxConstraints(maxHeight: maxHeight),
         decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.surface,
+          color:
+              AppTheme.isDark(context)
+                  ? AppTheme.darkPaperElevated
+                  : Theme.of(context).colorScheme.surface,
           borderRadius: const BorderRadius.vertical(
             top: Radius.circular(AppTheme.radiusSheet),
           ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.15),
-              blurRadius: 20,
-              offset: const Offset(0, -4),
-            ),
-          ],
+          border:
+              AppTheme.isDark(context)
+                  ? Border(
+                    top: BorderSide(color: AppTheme.darkBorderSubtle, width: 1),
+                    left: BorderSide(
+                      color: AppTheme.darkBorderSubtle,
+                      width: 1,
+                    ),
+                    right: BorderSide(
+                      color: AppTheme.darkBorderSubtle,
+                      width: 1,
+                    ),
+                  )
+                  : null,
+          boxShadow:
+              AppTheme.isDark(context)
+                  ? [] // No shadow in dark mode
+                  : [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.15),
+                      blurRadius: 20,
+                      offset: const Offset(0, -4),
+                    ),
+                  ],
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
