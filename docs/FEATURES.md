@@ -1,6 +1,6 @@
 # Contexta - Complete Feature Documentation
 
-> **Version:** 1.3.0  
+> **Version:** 1.4.0  
 > **Last Updated:** January 30, 2026  
 > **Authors:** Development Team  
 > **Repository:** github.com/jiteshh-10/Contexta
@@ -41,10 +41,15 @@
    - [UI Components](#63-ui-components)
    - [Integration](#64-integration)
    - [Data Model](#65-data-model)
-7. [API Reference](#7-api-reference)
-8. [Project Architecture](#8-project-architecture)
-9. [Troubleshooting](#9-troubleshooting)
-10. [Changelog](#10-changelog)
+7. [Global Search Across Books (v1.4.0)](#7-global-search-across-books-v140)
+   - [Overview](#71-overview)
+   - [UI Components](#72-ui-components)
+   - [Search Logic](#73-search-logic)
+   - [Integration](#74-integration)
+8. [API Reference](#8-api-reference)
+9. [Project Architecture](#9-project-architecture)
+10. [Troubleshooting](#10-troubleshooting)
+11. [Changelog](#11-changelog)
 
 ---
 
@@ -1304,7 +1309,212 @@ class WordEntry {
 
 ---
 
-## 7. API Reference
+## 7. Global Search Across Books (v1.4.0)
+
+*Feature: Search words across your entire library*
+
+### 7.1 Overview
+
+As users build their vocabulary collection (50+ words), scrolling through individual books becomes impractical. Global Search provides a fast, elegant way to find any word across all books instantly.
+
+#### Key Principles
+
+- **Instant Results**: No delay, filters as you type
+- **Bookish Design**: Bookmark-style ribbon animation
+- **Context Aware**: Shows which book each word belongs to
+- **Subtle & Sleek**: Appears only when there are words to search
+
+#### Why This Feature
+
+| Without Search | With Search |
+|----------------|-------------|
+| Open each book manually | Type a few letters |
+| Scroll through long lists | See matching words instantly |
+| Forget which book had a word | Book context shown in results |
+
+### 7.2 UI Components
+
+#### GlobalSearchBar
+
+The main search component with bookmark-inspired animations:
+
+```dart
+GlobalSearchBar(
+  books: widget.books,
+  onResultTap: (result) {
+    // Navigate to book and show word
+    _handleSearchResult(result);
+  },
+)
+```
+
+**Animation Details:**
+- **Expand**: 350ms with easeOutCubic curve
+- **Bookmark Ribbon**: Slides in from left with easeOutBack (overshoot)
+- **Results**: 250ms fade + slide from top
+- **Focus**: Border color transitions to primary with glow
+
+**Visual States:**
+- Collapsed: Muted placeholder "Search words"
+- Expanded: Active input with blue ribbon indicator
+- With Results: Dropdown with matching words
+- Empty Results: "No words found" message
+
+#### SearchResult Model
+
+Links a word to its parent book:
+
+```dart
+class SearchResult {
+  final WordEntry word;
+  final Book book;
+}
+```
+
+#### _SearchResultItem
+
+Individual result with word highlighting:
+
+```dart
+// Features:
+// - Bookmark-style left ribbon
+// - Word with query highlighted in primary color
+// - Book title with book icon
+// - Difficulty badge if present
+// - Chevron for navigation affordance
+```
+
+#### _HighlightedWord
+
+Highlights matching query substring:
+
+```dart
+_HighlightedWord(
+  word: "Ephemeral",
+  query: "phem",
+)
+// Renders: E[phem]eral with [phem] highlighted
+```
+
+### 7.3 Search Logic
+
+#### Filtering Algorithm
+
+```dart
+void _onSearchChanged() {
+  final query = _controller.text.trim().toLowerCase();
+  
+  // Search across all books
+  final results = <SearchResult>[];
+  for (final book in widget.books) {
+    for (final word in book.words) {
+      if (word.word.toLowerCase().contains(query)) {
+        results.add(SearchResult(word: word, book: book));
+      }
+    }
+  }
+  
+  // Sort by relevance
+  results.sort((a, b) {
+    // Exact matches first
+    final aExact = a.word.word.toLowerCase() == query;
+    final bExact = b.word.word.toLowerCase() == query;
+    if (aExact && !bExact) return -1;
+    if (!aExact && bExact) return 1;
+    // Then by recency
+    return b.word.timestamp.compareTo(a.word.timestamp);
+  });
+  
+  // Limit to 10 results
+  setState(() => _results = results.take(10).toList());
+}
+```
+
+**Search Characteristics:**
+- Case-insensitive substring matching
+- Searches word text only (not explanations)
+- Maximum 10 results displayed
+- Exact matches prioritized
+- Secondary sort by timestamp (most recent first)
+
+### 7.4 Integration
+
+#### In LibraryScreen
+
+The search bar appears at the top of the library when books have words:
+
+```dart
+Widget _buildBookListWithSearch(bool showSearch) {
+  return Column(
+    children: [
+      // Global search bar (only show if there are words to search)
+      if (showSearch)
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+          child: GlobalSearchBar(
+            books: widget.books,
+            onResultTap: _handleSearchResult,
+          ),
+        ),
+      
+      // Book list
+      Expanded(child: _buildBookList()),
+    ],
+  );
+}
+```
+
+#### Handling Search Results
+
+When a user taps a search result:
+
+```dart
+void _handleSearchResult(SearchResult result) {
+  setState(() {
+    _selectedBook = result.book;
+    _pendingWordToShow = result.word;
+    _view = LibraryView.detail;
+  });
+}
+
+// In build(), after navigating to detail:
+if (_pendingWordToShow != null) {
+  final wordToShow = _pendingWordToShow!;
+  _pendingWordToShow = null;
+  
+  WidgetsBinding.instance.addPostFrameCallback((_) {
+    if (mounted) {
+      _showWordDetails(wordToShow, currentBook);
+    }
+  });
+}
+```
+
+This pattern:
+1. Navigates to the book's detail screen
+2. Automatically opens the word explanation sheet
+3. Clears the pending word to prevent re-showing
+
+### Files Structure
+
+```
+lib/
+├── widgets/
+│   └── global_search.dart           # NEW
+│       ├── SearchResult             # Model
+│       ├── GlobalSearchBar          # Main widget
+│       ├── _SearchResultItem        # Result item
+│       └── _HighlightedWord         # Text highlighter
+└── screens/
+    └── library_screen.dart          # MODIFIED
+        ├── _handleSearchResult()    # NEW
+        ├── _showWordDetails()       # NEW
+        └── _pendingWordToShow       # NEW state
+```
+
+---
+
+## 8. API Reference
 
 ### PerplexityService
 
@@ -1361,7 +1571,7 @@ ExplanationLevel loadExplanationLevel();
 
 ---
 
-## 8. Project Architecture
+## 9. Project Architecture
 
 ### High-Level Architecture
 
@@ -1477,7 +1687,7 @@ class _MyAppState extends State<MyApp> {
 
 ---
 
-## 9. Troubleshooting
+## 10. Troubleshooting
 
 ### Common Issues
 
@@ -1569,9 +1779,53 @@ dependencies:
 
 ---
 
-## 10. Changelog
+## 11. Changelog
 
 All notable changes to Contexta are documented here.
+
+### [1.4.0] - 2026-01-30
+
+#### Added - Global Search Across Books
+*Commit: feat: Add global word search across all books*
+
+- **GlobalSearchBar Widget**
+  - Bookmark-style ribbon animation on focus
+  - Expand/collapse with smooth transitions (350ms)
+  - Search input with placeholder "Search words"
+  - Close button to collapse search
+  - Results dropdown with fade + slide animation
+
+- **SearchResult Model**
+  - Links WordEntry to parent Book
+  - Enables cross-book search results
+
+- **_SearchResultItem Widget**
+  - Bookmark-style left ribbon indicator
+  - Word with query highlighting
+  - Book title context display
+  - Difficulty badge (if tagged)
+  - Tap feedback animation
+
+- **_HighlightedWord Widget**
+  - Highlights matching substring in primary color
+  - Background tint for visibility
+
+- **LibraryScreen Integration**
+  - Search bar appears when books have words
+  - Result tap navigates to book and shows word
+  - Deferred word sheet display pattern
+
+- **Search Logic**
+  - Case-insensitive substring matching
+  - Exact matches prioritized
+  - Secondary sort by recency
+  - Maximum 10 results
+
+- **WordEntry Bug Fix**
+  - Handle legacy int storage for difficultyReason
+  - Backward compatible JSON parsing
+
+---
 
 ### [1.3.0] - 2026-01-30
 

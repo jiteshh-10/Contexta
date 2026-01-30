@@ -90,6 +90,20 @@ class WordEntry {
 
   /// Create from JSON
   factory WordEntry.fromJson(Map<String, dynamic> json) {
+    // Handle difficultyReason which might be null, String, or int (legacy data)
+    DifficultyReason? parsedReason;
+    final reasonValue = json['difficultyReason'];
+    if (reasonValue is String) {
+      parsedReason = DifficultyReason.fromStorageString(reasonValue);
+    } else if (reasonValue is int) {
+      // Handle legacy data where enum index was stored
+      final values = DifficultyReason.values;
+      if (reasonValue >= 0 && reasonValue < values.length) {
+        parsedReason = values[reasonValue];
+      }
+    }
+    // If null or invalid type, parsedReason stays null
+
     return WordEntry(
       id: json['id'] as String,
       word: json['word'] as String,
@@ -97,9 +111,7 @@ class WordEntry {
       bookId: json['bookId'] as String,
       timestamp: DateTime.parse(json['timestamp'] as String),
       lookupCount: json['lookupCount'] as int? ?? 1,
-      difficultyReason: DifficultyReason.fromStorageString(
-        json['difficultyReason'] as String?,
-      ),
+      difficultyReason: parsedReason,
     );
   }
 

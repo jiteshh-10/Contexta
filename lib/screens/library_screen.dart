@@ -1,11 +1,15 @@
 import 'package:flutter/material.dart';
 import '../models/book.dart';
+import '../models/word_entry.dart';
 import '../theme/app_theme.dart';
 import '../widgets/contexta_app_bar.dart';
 import '../widgets/book_card.dart';
 import '../widgets/primary_button.dart';
 import '../widgets/contexta_dialog.dart';
 import '../widgets/logo.dart';
+import '../widgets/global_search.dart';
+import '../widgets/contexta_bottom_sheet.dart';
+import '../widgets/word_explanation_sheet.dart';
 import 'add_book_screen.dart';
 import 'book_detail_screen.dart';
 
@@ -40,6 +44,7 @@ class _LibraryScreenState extends State<LibraryScreen>
     with SingleTickerProviderStateMixin {
   LibraryView _view = LibraryView.library;
   Book? _selectedBook;
+  WordEntry? _pendingWordToShow;
 
   // FAB animation
   late AnimationController _fabController;
@@ -93,6 +98,38 @@ class _LibraryScreenState extends State<LibraryScreen>
     widget.onRemoveBook(book.id);
   }
 
+  /// Handle search result tap - navigate to book and show word
+  void _handleSearchResult(SearchResult result) {
+    setState(() {
+      _selectedBook = result.book;
+      _pendingWordToShow = result.word;
+      _view = LibraryView.detail;
+    });
+  }
+
+  /// Show word details in a bottom sheet
+  void _showWordDetails(WordEntry word, Book book) {
+    showContextaBottomSheet(
+      context: context,
+      showCloseButton: false,
+      child: WordExplanationSheet(
+        entry: word,
+        bookTitle: book.title,
+        bookAuthor: book.author,
+        onClose: () => Navigator.of(context).pop(),
+        onRemove: () {
+          final updatedBook = book.removeWord(word.id);
+          widget.onUpdateBook(updatedBook);
+          Navigator.of(context).pop();
+        },
+        onUpdate: (updatedWord) {
+          final updatedBook = book.updateWord(updatedWord);
+          widget.onUpdateBook(updatedBook);
+        },
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     // Handle different views
@@ -113,17 +150,34 @@ class _LibraryScreenState extends State<LibraryScreen>
         orElse: () => _selectedBook!,
       );
 
+      // Show pending word if coming from search
+      if (_pendingWordToShow != null) {
+        final wordToShow = _pendingWordToShow!;
+        _pendingWordToShow = null;
+
+        // Schedule the bottom sheet to show after the screen is built
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            _showWordDetails(wordToShow, currentBook);
+          }
+        });
+      }
+
       return BookDetailScreen(
         book: currentBook,
         onBack: () {
           setState(() {
             _selectedBook = null;
+            _pendingWordToShow = null;
             _view = LibraryView.library;
           });
         },
         onUpdateBook: widget.onUpdateBook,
       );
     }
+
+    // Calculate if any book has words for showing search
+    final hasAnyWords = widget.books.any((b) => b.hasWords);
 
     // Library view
     return Scaffold(
@@ -136,7 +190,29 @@ class _LibraryScreenState extends State<LibraryScreen>
         ),
       ),
       floatingActionButton: _buildFAB(context),
-      body: widget.books.isEmpty ? _buildEmptyState(context) : _buildBookList(),
+      body:
+          widget.books.isEmpty
+              ? _buildEmptyState(context)
+              : _buildBookListWithSearch(hasAnyWords),
+    );
+  }
+
+  Widget _buildBookListWithSearch(bool showSearch) {
+    return Column(
+      children: [
+        // Global search bar (only show if there are words to search)
+        if (showSearch)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+            child: GlobalSearchBar(
+              books: widget.books,
+              onResultTap: _handleSearchResult,
+            ),
+          ),
+
+        // Book list
+        Expanded(child: _buildBookList()),
+      ],
     );
   }
 
