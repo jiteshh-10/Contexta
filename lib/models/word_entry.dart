@@ -1,3 +1,5 @@
+import 'difficulty_reason.dart';
+
 /// WordEntry model representing a word captured while reading
 /// Contains the word, its contextual explanation, and metadata
 class WordEntry {
@@ -7,6 +9,7 @@ class WordEntry {
   final String bookId;
   final DateTime timestamp;
   final int lookupCount;
+  final DifficultyReason? difficultyReason;
 
   WordEntry({
     required this.id,
@@ -15,6 +18,7 @@ class WordEntry {
     required this.bookId,
     DateTime? timestamp,
     this.lookupCount = 1,
+    this.difficultyReason,
   }) : timestamp = timestamp ?? DateTime.now();
 
   /// Create a copy with modified fields
@@ -25,6 +29,8 @@ class WordEntry {
     String? bookId,
     DateTime? timestamp,
     int? lookupCount,
+    DifficultyReason? difficultyReason,
+    bool clearDifficultyReason = false,
   }) {
     return WordEntry(
       id: id ?? this.id,
@@ -33,6 +39,10 @@ class WordEntry {
       bookId: bookId ?? this.bookId,
       timestamp: timestamp ?? this.timestamp,
       lookupCount: lookupCount ?? this.lookupCount,
+      difficultyReason:
+          clearDifficultyReason
+              ? null
+              : (difficultyReason ?? this.difficultyReason),
     );
   }
 
@@ -74,6 +84,7 @@ class WordEntry {
       'bookId': bookId,
       'timestamp': timestamp.toIso8601String(),
       'lookupCount': lookupCount,
+      'difficultyReason': difficultyReason?.toStorageString(),
     };
   }
 
@@ -86,6 +97,9 @@ class WordEntry {
       bookId: json['bookId'] as String,
       timestamp: DateTime.parse(json['timestamp'] as String),
       lookupCount: json['lookupCount'] as int? ?? 1,
+      difficultyReason: DifficultyReason.fromStorageString(
+        json['difficultyReason'] as String?,
+      ),
     );
   }
 

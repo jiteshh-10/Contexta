@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/word_entry.dart';
 import '../theme/app_theme.dart';
+import 'difficulty_reason_selector.dart';
 
 /// Word list item with tap feedback and relative timestamps
 /// Features: Serif bold word, 2-line explanation, active brightness effect
@@ -68,15 +69,28 @@ class _WordListItemState extends State<WordListItem> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Word title
-                      Text(
-                        widget.entry.capitalizedWord,
-                        style: TextStyle(
-                          fontFamily: 'Serif',
-                          fontSize: 17,
-                          fontWeight: FontWeight.w600,
-                          color: Theme.of(context).colorScheme.onSurface,
-                        ),
+                      // Word title row with optional difficulty badge
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              widget.entry.capitalizedWord,
+                              style: TextStyle(
+                                fontFamily: 'Serif',
+                                fontSize: 17,
+                                fontWeight: FontWeight.w600,
+                                color: Theme.of(context).colorScheme.onSurface,
+                              ),
+                            ),
+                          ),
+                          if (widget.entry.difficultyReason != null) ...[
+                            const SizedBox(width: 8),
+                            DifficultyReasonBadge(
+                              reason: widget.entry.difficultyReason!,
+                              compact: true,
+                            ),
+                          ],
+                        ],
                       ),
 
                       const SizedBox(height: 6),

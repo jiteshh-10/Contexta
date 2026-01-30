@@ -1,6 +1,6 @@
 # Contexta - Complete Feature Documentation
 
-> **Version:** 1.2.0  
+> **Version:** 1.3.0  
 > **Last Updated:** January 30, 2026  
 > **Authors:** Development Team  
 > **Repository:** github.com/jiteshh-10/Contexta
@@ -35,10 +35,16 @@
    - [UI Components](#53-ui-components)
    - [Display Logic](#54-display-logic)
    - [Data Model](#55-data-model)
-6. [API Reference](#6-api-reference)
-7. [Project Architecture](#7-project-architecture)
-8. [Troubleshooting](#8-troubleshooting)
-9. [Changelog](#9-changelog)
+6. [Difficulty Reason Tags (v1.3.0)](#6-difficulty-reason-tags-v130)
+   - [Overview](#61-overview)
+   - [Difficulty Reasons](#62-difficulty-reasons)
+   - [UI Components](#63-ui-components)
+   - [Integration](#64-integration)
+   - [Data Model](#65-data-model)
+7. [API Reference](#7-api-reference)
+8. [Project Architecture](#8-project-architecture)
+9. [Troubleshooting](#9-troubleshooting)
+10. [Changelog](#10-changelog)
 
 ---
 
@@ -1103,7 +1109,202 @@ lookupCount: json['lookupCount'] as int? ?? 1,
 
 ---
 
-## 6. API Reference
+## 6. Difficulty Reason Tags (v1.3.0)
+
+*Feature: Optional tagging for why a word was difficult*
+
+### 6.1 Overview
+
+When looking up a word, readers often have specific reasons why it tripped them up. The Difficulty Reason feature lets users optionally tag **why** a word was challenging, adding a personal learning dimension to their vocabulary journey.
+
+#### Key Principles
+
+- **Optional & Skippable**: Never forces users to tag - it's entirely optional
+- **Lightweight**: Quick single-tap selection, doesn't interrupt flow
+- **Thoughtful**: Makes Contexta feel like a personal learning journal
+- **Subtle UI**: Poppy animations without being distracting
+
+### 6.2 Difficulty Reasons
+
+Four carefully chosen categories cover the main reasons readers pause at words:
+
+| Reason | Icon | Color | Use Case |
+|--------|------|-------|----------|
+| **Meaning unclear** | `help_outline_rounded` | Blue (#5B8DEF) | Word meaning itself was unfamiliar |
+| **Context confusing** | `menu_book_rounded` | Orange (#E89B3E) | Knew the word but context made it confusing |
+| **Philosophical** | `psychology_outlined` | Purple (#9B6EE8) | Deep or abstract philosophical usage |
+| **Old/Archaic** | `history_edu_rounded` | Teal (#6EAE8B) | Dated or archaic language |
+
+```dart
+enum DifficultyReason {
+  meaningUnclear(
+    label: 'Meaning unclear',
+    description: 'The word meaning itself was unfamiliar',
+    icon: Icons.help_outline_rounded,
+    color: Color(0xFF5B8DEF),
+  ),
+  contextConfusing(
+    label: 'Context confusing',
+    description: 'I knew the word but the context made it confusing',
+    icon: Icons.menu_book_rounded,
+    color: Color(0xFFE89B3E),
+  ),
+  philosophicalUsage(
+    label: 'Philosophical',
+    description: 'The word was used in a deep or philosophical way',
+    icon: Icons.psychology_outlined,
+    color: Color(0xFF9B6EE8),
+  ),
+  archaicUsage(
+    label: 'Old/Archaic',
+    description: 'The word or usage felt dated or archaic',
+    icon: Icons.history_edu_rounded,
+    color: Color(0xFF6EAE8B),
+  );
+
+  final String label;
+  final String description;
+  final IconData icon;
+  final Color color;
+  
+  // Serialization for storage
+  String toStorageString() => name;
+  static DifficultyReason? fromStorageString(String? value) {...}
+}
+```
+
+### 6.3 UI Components
+
+#### DifficultyReasonSelector
+
+The main selection widget with animated chip buttons:
+
+```dart
+DifficultyReasonSelector(
+  selectedReason: _selectedReason,
+  onReasonChanged: (reason) => setState(() => _selectedReason = reason),
+  onSkip: () => Navigator.pop(context),
+  showHeader: true,  // Shows "Why was this tricky?"
+)
+```
+
+**Animation Details:**
+- **Entrance**: Elastic staggered animation (150ms delay per chip, 600ms total)
+- **Selection**: Bounce effect (300ms, 10% scale pop)
+- **Press**: Scale down 5% on tap
+
+**Visual States:**
+- Unselected: Muted background, border matches theme
+- Selected: Colored background tint, colored border, checkmark icon, subtle shadow
+
+#### DifficultyReasonBadge
+
+Compact display for lists and detail views:
+
+```dart
+// Full badge (icon + label)
+DifficultyReasonBadge(reason: DifficultyReason.meaningUnclear)
+
+// Compact badge (icon only, for list items)
+DifficultyReasonBadge(reason: entry.difficultyReason!, compact: true)
+```
+
+### 6.4 Integration
+
+#### In WordExplanationSheet
+
+The sheet shows different states based on whether a reason is set:
+
+1. **Has Reason**: Shows `DifficultyReasonBadge` (tappable to edit)
+2. **No Reason + Editable**: Shows "Add difficulty note" button
+3. **Editing Mode**: Shows full `DifficultyReasonSelector`
+
+```dart
+// State management in WordExplanationSheet
+bool _isEditingReason = false;
+DifficultyReason? _selectedReason;
+
+void _toggleReasonEditing() {
+  setState(() {
+    _isEditingReason = !_isEditingReason;
+    if (!_isEditingReason && _selectedReason != widget.entry.difficultyReason) {
+      // Auto-save when closing editor
+      final updatedEntry = widget.entry.copyWith(
+        difficultyReason: _selectedReason,
+        clearDifficultyReason: _selectedReason == null,
+      );
+      widget.onUpdate?.call(updatedEntry);
+    }
+  });
+}
+```
+
+#### In WordListItem
+
+Shows compact badge next to word title:
+
+```dart
+Row(
+  children: [
+    Expanded(child: Text(widget.entry.capitalizedWord, ...)),
+    if (widget.entry.difficultyReason != null) ...[
+      const SizedBox(width: 8),
+      DifficultyReasonBadge(
+        reason: widget.entry.difficultyReason!,
+        compact: true,
+      ),
+    ],
+  ],
+)
+```
+
+### 6.5 Data Model
+
+#### WordEntry Updates
+
+```dart
+class WordEntry {
+  final String id;
+  final String word;
+  final String explanation;
+  final String bookId;
+  final DateTime timestamp;
+  final int lookupCount;
+  final DifficultyReason? difficultyReason;  // NEW - Optional
+
+  WordEntry copyWith({
+    // ... other fields
+    DifficultyReason? difficultyReason,
+    bool clearDifficultyReason = false,  // Set to true to clear reason
+  }) {
+    return WordEntry(
+      // ... other fields
+      difficultyReason: clearDifficultyReason 
+          ? null 
+          : (difficultyReason ?? this.difficultyReason),
+    );
+  }
+
+  // JSON serialization
+  Map<String, dynamic> toJson() => {
+    // ... other fields
+    'difficultyReason': difficultyReason?.toStorageString(),
+  };
+
+  factory WordEntry.fromJson(Map<String, dynamic> json) => WordEntry(
+    // ... other fields
+    difficultyReason: DifficultyReason.fromStorageString(
+      json['difficultyReason'] as String?,
+    ),
+  );
+}
+```
+
+**Backward Compatibility:** Existing words without `difficultyReason` will have `null` (no reason set).
+
+---
+
+## 7. API Reference
 
 ### PerplexityService
 
@@ -1160,7 +1361,7 @@ ExplanationLevel loadExplanationLevel();
 
 ---
 
-## 7. Project Architecture
+## 8. Project Architecture
 
 ### High-Level Architecture
 
@@ -1276,7 +1477,7 @@ class _MyAppState extends State<MyApp> {
 
 ---
 
-## 8. Troubleshooting
+## 9. Troubleshooting
 
 ### Common Issues
 
@@ -1368,9 +1569,51 @@ dependencies:
 
 ---
 
-## 9. Changelog
+## 10. Changelog
 
 All notable changes to Contexta are documented here.
+
+### [1.3.0] - 2026-01-30
+
+#### Added - Difficulty Reason Tags
+*Commit: feat: Add optional difficulty reason tagging*
+
+- **DifficultyReason Enum**
+  - `meaningUnclear`: Word meaning was unclear (blue icon)
+  - `contextConfusing`: Context made it hard to understand (orange icon)
+  - `philosophicalUsage`: Deep/philosophical usage (purple icon)
+  - `archaicUsage`: Old or archaic language (teal icon)
+  - Each reason has: label, description, icon, color
+  - Storage-safe serialization methods
+
+- **DifficultyReasonSelector Widget**
+  - Poppy elastic entrance animation (staggered per chip)
+  - Bounce feedback on selection
+  - Subtle header "Why was this tricky?"
+  - Optional skip button for skippable selection
+  - Horizontal wrap layout for all screen sizes
+
+- **DifficultyReasonBadge Widget**
+  - Compact mode (icon only) for list items
+  - Full mode (icon + label) for detail views
+  - Theme-adaptive colors
+
+- **WordExplanationSheet Updates**
+  - Display difficulty badge for tagged words
+  - "Add difficulty note" button for untagged words
+  - Inline editing of difficulty reason
+  - Auto-save when closing reason editor
+
+- **WordListItem Updates**
+  - Compact difficulty badge next to word title
+  - Non-intrusive visual indicator
+
+- **WordEntry Model Updates**
+  - Optional `difficultyReason` field
+  - `clearDifficultyReason` flag in copyWith()
+  - Backward-compatible JSON serialization
+
+---
 
 ### [1.2.0] - 2026-01-30
 

@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../models/word_entry.dart';
+import '../models/difficulty_reason.dart';
 import '../theme/app_theme.dart';
 import 'secondary_button.dart';
 import 'contexta_text_field.dart';
 import 'loading_dots.dart';
+import 'difficulty_reason_selector.dart';
 
 /// Word explanation bottom sheet with full details
 /// Features: Haptic feedback on delete, edit mode with refetch, formatted explanation
@@ -40,13 +42,16 @@ class _WordExplanationSheetState extends State<WordExplanationSheet>
   bool _isRemoving = false;
   bool _isEditing = false;
   bool _isRefetching = false;
+  bool _isEditingReason = false;
   late String _editedWord;
+  late DifficultyReason? _selectedReason;
   final FocusNode _editFocusNode = FocusNode();
 
   @override
   void initState() {
     super.initState();
     _editedWord = widget.entry.word;
+    _selectedReason = widget.entry.difficultyReason;
 
     _animController = AnimationController(
       vsync: this,
@@ -145,6 +150,28 @@ class _WordExplanationSheetState extends State<WordExplanationSheet>
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _editFocusNode.requestFocus();
     });
+  }
+
+  void _toggleReasonEditing() {
+    setState(() {
+      _isEditingReason = !_isEditingReason;
+      if (!_isEditingReason) {
+        // Save the reason when closing the editor
+        if (_selectedReason != widget.entry.difficultyReason) {
+          final updatedEntry = widget.entry.copyWith(
+            difficultyReason: _selectedReason,
+            clearDifficultyReason: _selectedReason == null,
+          );
+          widget.onUpdate?.call(updatedEntry);
+          HapticFeedback.lightImpact();
+        }
+      }
+    });
+  }
+
+  void _updateReason(DifficultyReason? reason) {
+    setState(() => _selectedReason = reason);
+    HapticFeedback.selectionClick();
   }
 
   /// Parse explanation to extract short definition and context
@@ -301,6 +328,76 @@ class _WordExplanationSheetState extends State<WordExplanationSheet>
                   ),
                   textAlign: TextAlign.center,
                 ),
+
+              // Difficulty reason section
+              if (_isEditingReason) ...[
+                const SizedBox(height: 20),
+                DifficultyReasonSelector(
+                  selectedReason: _selectedReason,
+                  onReasonChanged: _updateReason,
+                  onSkip: _toggleReasonEditing,
+                  showHeader: true,
+                ),
+                const SizedBox(height: 12),
+                GestureDetector(
+                  onTap: _toggleReasonEditing,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    child: Text(
+                      'Done',
+                      style: TextStyle(
+                        fontFamily: 'Inter',
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
+                    ),
+                  ),
+                ),
+              ] else if (_selectedReason != null) ...[
+                const SizedBox(height: 16),
+                GestureDetector(
+                  onTap: widget.onUpdate != null ? _toggleReasonEditing : null,
+                  child: DifficultyReasonBadge(reason: _selectedReason!),
+                ),
+              ] else if (widget.onUpdate != null) ...[
+                const SizedBox(height: 16),
+                GestureDetector(
+                  onTap: _toggleReasonEditing,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: AppTheme.getBorder(context),
+                        style: BorderStyle.solid,
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.add_rounded,
+                          size: 14,
+                          color: AppTheme.getTextMuted(context),
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          'Add difficulty note',
+                          style: TextStyle(
+                            fontFamily: 'Inter',
+                            fontSize: 12,
+                            color: AppTheme.getTextMuted(context),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
             ],
 
             const SizedBox(height: 24),
