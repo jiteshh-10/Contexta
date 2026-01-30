@@ -7,6 +7,7 @@ import 'secondary_button.dart';
 import 'contexta_text_field.dart';
 import 'loading_dots.dart';
 import 'difficulty_reason_selector.dart';
+import 'quote_capture_section.dart';
 
 /// Word explanation bottom sheet with full details
 /// Features: Haptic feedback on delete, edit mode with refetch, formatted explanation
@@ -45,6 +46,7 @@ class _WordExplanationSheetState extends State<WordExplanationSheet>
   bool _isEditingReason = false;
   late String _editedWord;
   late DifficultyReason? _selectedReason;
+  late String? _currentQuote;
   final FocusNode _editFocusNode = FocusNode();
 
   @override
@@ -52,6 +54,7 @@ class _WordExplanationSheetState extends State<WordExplanationSheet>
     super.initState();
     _editedWord = widget.entry.word;
     _selectedReason = widget.entry.difficultyReason;
+    _currentQuote = widget.entry.quote;
 
     _animController = AnimationController(
       vsync: this,
@@ -172,6 +175,19 @@ class _WordExplanationSheetState extends State<WordExplanationSheet>
   void _updateReason(DifficultyReason? reason) {
     setState(() => _selectedReason = reason);
     HapticFeedback.selectionClick();
+  }
+
+  /// Handle quote changes from QuoteCaptureSection
+  void _handleQuoteChanged(String? quote) {
+    // Update local state for immediate UI feedback
+    setState(() => _currentQuote = quote);
+
+    // Persist to parent
+    final updatedEntry = widget.entry.copyWith(
+      quote: quote,
+      clearQuote: quote == null,
+    );
+    widget.onUpdate?.call(updatedEntry);
   }
 
   /// Parse explanation to extract short definition and context
@@ -398,6 +414,16 @@ class _WordExplanationSheetState extends State<WordExplanationSheet>
                   ),
                 ),
               ],
+            ],
+
+            // Quote capture section
+            if (!_isEditing) ...[
+              const SizedBox(height: 20),
+              QuoteCaptureSection(
+                quote: _currentQuote,
+                canEdit: widget.onUpdate != null,
+                onQuoteChanged: _handleQuoteChanged,
+              ),
             ],
 
             const SizedBox(height: 24),

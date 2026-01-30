@@ -28,9 +28,12 @@ class DatabaseMigrations {
       case 2:
         await _migrateV1ToV2(db);
         break;
+      case 3:
+        await _migrateV2ToV3(db);
+        break;
       // Add future migrations here:
-      // case 3:
-      //   await _migrateV2ToV3(db);
+      // case 4:
+      //   await _migrateV3ToV4(db);
       //   break;
       default:
         throw Exception('Unknown database version: $newVersion');
@@ -235,6 +238,22 @@ class DatabaseMigrations {
     ''');
 
     debugPrint('DatabaseMigrations: v2 migration complete');
+  }
+
+  /// Migration v2 -> v3: Add quote capture
+  ///
+  /// Changes:
+  /// - Add quote column to word_entries table
+  static Future<void> _migrateV2ToV3(Database db) async {
+    debugPrint('DatabaseMigrations: Migrating to v3 - Quote capture');
+
+    // Add quote column to word_entries table
+    // SQLite doesn't require NOT NULL so existing rows will have NULL
+    await db.execute('''
+      ALTER TABLE word_entries ADD COLUMN quote TEXT
+    ''');
+
+    debugPrint('DatabaseMigrations: v3 migration complete');
   }
 
   // ========================================

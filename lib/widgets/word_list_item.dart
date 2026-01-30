@@ -69,18 +69,34 @@ class _WordListItemState extends State<WordListItem> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Word title row with optional difficulty badge
+                      // Word title row with optional indicators
                       Row(
                         children: [
                           Expanded(
-                            child: Text(
-                              widget.entry.capitalizedWord,
-                              style: TextStyle(
-                                fontFamily: 'Serif',
-                                fontSize: 17,
-                                fontWeight: FontWeight.w600,
-                                color: Theme.of(context).colorScheme.onSurface,
-                              ),
+                            child: Row(
+                              children: [
+                                Text(
+                                  widget.entry.capitalizedWord,
+                                  style: TextStyle(
+                                    fontFamily: 'Serif',
+                                    fontSize: 17,
+                                    fontWeight: FontWeight.w600,
+                                    color:
+                                        Theme.of(context).colorScheme.onSurface,
+                                  ),
+                                ),
+                                // Quote indicator - tiny quotation mark
+                                if (widget.entry.hasQuote) ...[
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    '❝',
+                                    style: TextStyle(
+                                      fontSize: 10,
+                                      color: AppTheme.getTextMuted(context),
+                                    ),
+                                  ),
+                                ],
+                              ],
                             ),
                           ),
                           if (widget.entry.difficultyReason != null) ...[

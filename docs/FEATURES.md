@@ -1,6 +1,6 @@
 # Contexta - Complete Feature Documentation
 
-> **Version:** 1.6.0  
+> **Version:** 1.7.0  
 > **Last Updated:** January 30, 2026  
 > **Authors:** Development Team  
 > **Repository:** github.com/jiteshh-10/Contexta
@@ -59,10 +59,16 @@
    - [Services](#94-services)
    - [Settings](#95-settings)
    - [Database](#96-database)
-10. [API Reference](#10-api-reference)
-11. [Project Architecture](#11-project-architecture)
-12. [Troubleshooting](#12-troubleshooting)
-13. [Changelog](#13-changelog)
+10. [Quote Capture (v1.7.0)](#10-quote-capture-v170)
+    - [Overview](#101-overview)
+    - [Core Concept](#102-core-concept)
+    - [UI Components](#103-ui-components)
+    - [Data Model](#104-data-model)
+    - [Database](#105-database)
+11. [API Reference](#11-api-reference)
+12. [Project Architecture](#12-project-architecture)
+13. [Troubleshooting](#13-troubleshooting)
+14. [Changelog](#14-changelog)
 
 ---
 
@@ -2186,7 +2192,204 @@ It exists to **affirm continuity**, not demand discipline.
 
 ---
 
-## 10. API Reference
+## 10. Quote Capture (v1.7.0)
+
+### 10.1 Overview
+
+Words are rarely remembered alone.
+They are remembered **inside a sentence**, a rhythm, a moment in the text.
+
+Quote Capture lets readers preserve *where* the word lived—
+not to study harder, but to **remember better**.
+
+**Core Philosophy:**
+- This is not highlighting
+- This is *a margin note*
+- Optional, never forced
+- Feels like underlining in a paperback
+
+### 10.2 Core Concept
+
+#### What It Is
+
+* A quote is a **single sentence or short passage** where the word appeared.
+* It is **optional**.
+* It is stored **with the word**, not separately.
+
+#### When the Quote Is Added
+
+**Primary Flow (Default)**
+1. User enters a word
+2. Explanation is generated
+3. Word is saved
+4. Quote field remains **hidden**
+
+**Secondary Flow (Intentional)**
+User taps: *"Add the sentence it appeared in"*
+Only then does the quote input appear.
+
+This keeps the interface clean for most users.
+
+### 10.3 UI Components
+
+#### QuoteCaptureSection Widget
+
+**Location:** `lib/widgets/quote_capture_section.dart`
+
+```dart
+class QuoteCaptureSection extends StatefulWidget {
+  final String? quote;
+  final bool startInEditMode;
+  final void Function(String? quote) onQuoteChanged;
+  final bool canEdit;
+}
+```
+
+#### Default State (Collapsed)
+
+A single muted line:
+> *"Add the sentence it appeared in"*
+
+* Italic
+* Muted text color
+* No border
+* Looks like a pencil note prompt
+
+#### Expanded State (Editing)
+
+**Input Style**
+* Multiline text area
+* Rounded corners
+* Paper background
+* Slight inset padding
+
+**Placeholder**
+> "Write the sentence as you remember it…"
+
+#### Typography
+
+* Serif font (same as explanation)
+* Slightly smaller than explanation text
+* Line height increased
+* Text color: secondary
+
+#### Animation Design
+
+**Expand Animation**
+* Height expand + fade in
+* Duration: **220ms**
+* Curve: `ease-out`
+
+**Save Animation**
+* Text briefly highlights (subtle background tint)
+* Highlight fades out over 300ms
+
+**Edit Interaction**
+* Tap quote → enters edit mode
+* Cancel collapses back
+
+#### After Saving (Read Mode)
+
+```
+"Everything he knew was suddenly uncertain."
+```
+
+* Quotation marks included
+* Slight indent
+* Italicized
+* No box
+* Looks like a literary excerpt
+
+#### Quote Indicator in Word List
+
+In the word list:
+* A tiny quotation mark (❝) next to word
+* Only if a quote exists
+* No text, no labels
+
+### 10.4 Data Model
+
+```dart
+class WordEntry {
+  final String id;
+  final String word;
+  final String explanation;
+  final String bookId;
+  final DateTime timestamp;
+  final int lookupCount;
+  final DifficultyReason? difficultyReason;
+  final String? quote; // optional
+
+  bool get hasQuote => quote != null && quote!.trim().isNotEmpty;
+}
+```
+
+No separate quote entity—stored with the word.
+
+### 10.5 Database
+
+#### Migration v2 → v3
+
+**Location:** `lib/services/database/migrations.dart`
+
+```dart
+static Future<void> _migrateV2ToV3(Database db) async {
+  await db.execute('''
+    ALTER TABLE word_entries ADD COLUMN quote TEXT
+  ''');
+}
+```
+
+### 10.6 Copy Variants
+
+Rotate sparingly:
+* "Add the sentence it appeared in"
+* "Remember the line it came from"
+* "Save the sentence, if you'd like"
+
+### 10.7 File Structure
+
+```
+lib/
+├── models/
+│   └── word_entry.dart           # MODIFIED (quote field)
+├── widgets/
+│   ├── quote_capture_section.dart # NEW
+│   ├── word_explanation_sheet.dart # MODIFIED
+│   └── word_list_item.dart        # MODIFIED (quote indicator)
+└── services/
+    └── database/
+        ├── database_service.dart  # MODIFIED (version 3)
+        └── migrations.dart        # MODIFIED (v3 migration)
+```
+
+### 10.8 Why This Feature Is Powerful
+
+**Emotional Value**
+* Readers remember *moments*, not definitions
+* Seeing the sentence instantly revives the scene
+
+**Literary Authenticity**
+* Feels like underlining in a paperback
+* Honors how people actually read
+
+**Long-term Retention**
+* Words learned with context stick longer
+* Revisiting quotes is more rewarding than revisiting meanings
+
+### 10.9 What This Feature Is NOT
+
+❌ Not full quote highlighting
+❌ Not chapter tracking
+❌ Not page numbers
+❌ Not copyright-heavy extraction
+❌ Not forced
+
+Everything is **user-remembered**, not scraped.
+
+---
+
+## 11. API Reference
 
 ### PerplexityService
 
@@ -2243,7 +2446,7 @@ ExplanationLevel loadExplanationLevel();
 
 ---
 
-## 11. Project Architecture
+## 12. Project Architecture
 
 ### High-Level Architecture
 
@@ -2359,7 +2562,7 @@ class _MyAppState extends State<MyApp> {
 
 ---
 
-## 12. Troubleshooting
+## 13. Troubleshooting
 
 ### Common Issues
 
@@ -2524,9 +2727,48 @@ dependencies:
 
 ---
 
-## 13. Changelog
+## 14. Changelog
 
 All notable changes to Contexta are documented here.
+
+### [1.7.0] - 2026-01-30
+
+#### Added - Quote Capture (Sentence in Context)
+*Commit: feat: Add quote capture for contextual word memory*
+
+- **QuoteCaptureSection Widget**
+  - Collapsible quote input with literary styling
+  - Serif italic typography, muted colors
+  - Expand animation (220ms, ease-out)
+  - Save highlight animation (300ms fade)
+  - Edit mode for existing quotes
+
+- **WordEntry Model Update**
+  - Added optional `quote` field
+  - Added `hasQuote` getter
+  - Updated copyWith, toJson, fromJson
+
+- **WordListItem Enhancement**
+  - Subtle quote indicator (❝) next to word
+  - Only visible when quote exists
+  - No labels, just visual cue
+
+- **WordExplanationSheet Integration**
+  - Quote section below explanation
+  - Above book reference
+  - One-tap to add, one-tap to edit
+
+- **Database Migration v3**
+  - Added quote column to word_entries table
+  - Backward compatible (existing entries have NULL)
+
+- **Philosophy**
+  - Words remembered in context stick longer
+  - Feels like underlining in a paperback
+  - User-remembered, not scraped
+  - Optional and invisible unless used
+
+---
 
 ### [1.6.0] - 2026-01-30
 

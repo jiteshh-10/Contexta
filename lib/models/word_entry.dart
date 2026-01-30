@@ -10,6 +10,7 @@ class WordEntry {
   final DateTime timestamp;
   final int lookupCount;
   final DifficultyReason? difficultyReason;
+  final String? quote; // Optional: the sentence where the word appeared
 
   WordEntry({
     required this.id,
@@ -19,7 +20,11 @@ class WordEntry {
     DateTime? timestamp,
     this.lookupCount = 1,
     this.difficultyReason,
+    this.quote,
   }) : timestamp = timestamp ?? DateTime.now();
+
+  /// Check if this entry has a quote
+  bool get hasQuote => quote != null && quote!.trim().isNotEmpty;
 
   /// Create a copy with modified fields
   WordEntry copyWith({
@@ -31,6 +36,8 @@ class WordEntry {
     int? lookupCount,
     DifficultyReason? difficultyReason,
     bool clearDifficultyReason = false,
+    String? quote,
+    bool clearQuote = false,
   }) {
     return WordEntry(
       id: id ?? this.id,
@@ -43,6 +50,7 @@ class WordEntry {
           clearDifficultyReason
               ? null
               : (difficultyReason ?? this.difficultyReason),
+      quote: clearQuote ? null : (quote ?? this.quote),
     );
   }
 
@@ -85,6 +93,7 @@ class WordEntry {
       'timestamp': timestamp.toIso8601String(),
       'lookupCount': lookupCount,
       'difficultyReason': difficultyReason?.toStorageString(),
+      'quote': quote,
     };
   }
 
@@ -112,6 +121,7 @@ class WordEntry {
       timestamp: DateTime.parse(json['timestamp'] as String),
       lookupCount: json['lookupCount'] as int? ?? 1,
       difficultyReason: parsedReason,
+      quote: json['quote'] as String?,
     );
   }
 
