@@ -18,6 +18,7 @@ class StorageService {
   static const String _themeModeKey = 'contexta_theme_mode';
   static const String _firstLaunchKey = 'contexta_first_launch';
   static const String _explanationLevelKey = 'contexta_explanation_level';
+  static const String _showReadingStreakKey = 'contexta_show_reading_streak';
 
   /// Initialize the storage service
   /// Must be called before using any other methods
@@ -132,6 +133,18 @@ class StorageService {
   ExplanationLevel loadExplanationLevel() {
     final value = _preferences.getString(_explanationLevelKey);
     return ExplanationLevel.fromStorageString(value);
+  }
+
+  // ============ Reading Streak Settings ============
+
+  /// Save reading streak visibility preference
+  Future<bool> saveShowReadingStreak(bool show) async {
+    return await _preferences.setBool(_showReadingStreakKey, show);
+  }
+
+  /// Load reading streak visibility preference (default: true)
+  bool loadShowReadingStreak() {
+    return _preferences.getBool(_showReadingStreakKey) ?? true;
   }
 
   // ============ Utility Methods ============

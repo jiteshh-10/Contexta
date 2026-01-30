@@ -25,9 +25,12 @@ class DatabaseMigrations {
       case 1:
         await _migrateV0ToV1(db);
         break;
+      case 2:
+        await _migrateV1ToV2(db);
+        break;
       // Add future migrations here:
-      // case 2:
-      //   await _migrateV1ToV2(db);
+      // case 3:
+      //   await _migrateV2ToV3(db);
       //   break;
       default:
         throw Exception('Unknown database version: $newVersion');
@@ -201,6 +204,37 @@ class DatabaseMigrations {
     ''');
 
     debugPrint('DatabaseMigrations: v1 schema created successfully');
+  }
+
+  /// Migration v1 -> v2: Add reading streak tracking
+  ///
+  /// Tables created:
+  /// - reading_days: Track unique days when words were saved
+  static Future<void> _migrateV1ToV2(Database db) async {
+    debugPrint('DatabaseMigrations: Migrating to v2 - Reading streak');
+
+    // ========================================
+    // Reading days table for streak tracking
+    // ========================================
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS reading_days (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        
+        -- Date in yyyy-MM-dd format (local timezone)
+        date TEXT NOT NULL UNIQUE,
+        
+        -- When this record was created
+        created_at TEXT NOT NULL
+      )
+    ''');
+
+    // Index for date lookups
+    await db.execute('''
+      CREATE INDEX IF NOT EXISTS idx_reading_days_date 
+      ON reading_days (date DESC)
+    ''');
+
+    debugPrint('DatabaseMigrations: v2 migration complete');
   }
 
   // ========================================

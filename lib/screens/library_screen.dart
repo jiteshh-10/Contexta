@@ -11,6 +11,8 @@ import '../widgets/global_search.dart';
 import '../widgets/contexta_bottom_sheet.dart';
 import '../widgets/word_explanation_sheet.dart';
 import '../widgets/export_options_sheet.dart';
+import '../widgets/reading_streak_indicator.dart';
+import '../widgets/settings_sheet.dart';
 import 'add_book_screen.dart';
 import 'book_detail_screen.dart';
 
@@ -26,6 +28,8 @@ class LibraryScreen extends StatefulWidget {
   final void Function(String title, String author) onAddBook;
   final void Function(String bookId) onRemoveBook;
   final void Function(Book book) onUpdateBook;
+  final bool showReadingStreak;
+  final VoidCallback onToggleReadingStreak;
 
   const LibraryScreen({
     super.key,
@@ -35,6 +39,8 @@ class LibraryScreen extends StatefulWidget {
     required this.onAddBook,
     required this.onRemoveBook,
     required this.onUpdateBook,
+    required this.showReadingStreak,
+    required this.onToggleReadingStreak,
   });
 
   @override
@@ -142,6 +148,22 @@ class _LibraryScreenState extends State<LibraryScreen>
     );
   }
 
+  /// Show settings bottom sheet
+  void _showSettings() {
+    showContextaBottomSheet(
+      context: context,
+      child: SettingsSheet(
+        showReadingStreak: widget.showReadingStreak,
+        onToggleReadingStreak: widget.onToggleReadingStreak,
+        isDarkMode: widget.isDarkMode,
+        onToggleTheme: widget.onToggleTheme,
+        onClose: () => Navigator.of(context).pop(),
+        books: widget.books,
+        onExportAll: _showExportAllOptions,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     // Handle different views
@@ -196,18 +218,7 @@ class _LibraryScreenState extends State<LibraryScreen>
       appBar: ContextaAppBar(
         title: 'My Books',
         showBackButton: false,
-        rightAction: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Export all button (only show if there are words)
-            if (hasAnyWords) _ExportAllButton(onTap: _showExportAllOptions),
-            const SizedBox(width: 4),
-            _ThemeToggleButton(
-              isDarkMode: widget.isDarkMode,
-              onTap: widget.onToggleTheme,
-            ),
-          ],
-        ),
+        rightAction: _SettingsButton(onTap: _showSettings),
       ),
       floatingActionButton: _buildFAB(context),
       body:
@@ -220,6 +231,10 @@ class _LibraryScreenState extends State<LibraryScreen>
   Widget _buildBookListWithSearch(bool showSearch) {
     return Column(
       children: [
+        // Reading streak indicator (subtle consistency note)
+        if (widget.showReadingStreak)
+          const ReadingStreakIndicator(showDotRow: true),
+
         // Global search bar (only show if there are words to search)
         if (showSearch)
           Padding(
@@ -366,17 +381,17 @@ class _LibraryScreenState extends State<LibraryScreen>
   }
 }
 
-/// Export all button for exporting vocabulary from all books
-class _ExportAllButton extends StatefulWidget {
+/// Settings button for accessing app settings
+class _SettingsButton extends StatefulWidget {
   final VoidCallback onTap;
 
-  const _ExportAllButton({required this.onTap});
+  const _SettingsButton({required this.onTap});
 
   @override
-  State<_ExportAllButton> createState() => _ExportAllButtonState();
+  State<_SettingsButton> createState() => _SettingsButtonState();
 }
 
-class _ExportAllButtonState extends State<_ExportAllButton> {
+class _SettingsButtonState extends State<_SettingsButton> {
   bool _isPressed = false;
 
   @override
@@ -402,68 +417,9 @@ class _ExportAllButtonState extends State<_ExportAllButton> {
                     : Colors.transparent,
           ),
           child: Icon(
-            Icons.ios_share_rounded,
+            Icons.settings_outlined,
             color: Theme.of(context).colorScheme.onSurface,
-            size: 20,
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// Theme toggle button with smooth animation
-class _ThemeToggleButton extends StatefulWidget {
-  final bool isDarkMode;
-  final VoidCallback onTap;
-
-  const _ThemeToggleButton({required this.isDarkMode, required this.onTap});
-
-  @override
-  State<_ThemeToggleButton> createState() => _ThemeToggleButtonState();
-}
-
-class _ThemeToggleButtonState extends State<_ThemeToggleButton> {
-  bool _isPressed = false;
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTapDown: (_) => setState(() => _isPressed = true),
-      onTapUp: (_) => setState(() => _isPressed = false),
-      onTapCancel: () => setState(() => _isPressed = false),
-      onTap: widget.onTap,
-      child: AnimatedScale(
-        duration: AppTheme.buttonPressDuration,
-        scale: _isPressed ? 0.9 : 1.0,
-        child: Container(
-          width: 40,
-          height: 40,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color:
-                _isPressed
-                    ? Theme.of(
-                      context,
-                    ).colorScheme.primary.withValues(alpha: 0.1)
-                    : Colors.transparent,
-          ),
-          child: AnimatedSwitcher(
-            duration: AppTheme.cardPressDuration,
-            transitionBuilder: (child, animation) {
-              return ScaleTransition(
-                scale: animation,
-                child: FadeTransition(opacity: animation, child: child),
-              );
-            },
-            child: Icon(
-              widget.isDarkMode
-                  ? Icons.light_mode_outlined
-                  : Icons.dark_mode_outlined,
-              key: ValueKey(widget.isDarkMode),
-              color: Theme.of(context).colorScheme.onSurface,
-              size: 22,
-            ),
+            size: 22,
           ),
         ),
       ),

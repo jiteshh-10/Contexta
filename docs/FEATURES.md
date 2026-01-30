@@ -1,6 +1,6 @@
 # Contexta - Complete Feature Documentation
 
-> **Version:** 1.5.0  
+> **Version:** 1.6.0  
 > **Last Updated:** January 30, 2026  
 > **Authors:** Development Team  
 > **Repository:** github.com/jiteshh-10/Contexta
@@ -52,10 +52,17 @@
    - [UI Components](#83-ui-components)
    - [Services](#84-services)
    - [Integration](#85-integration)
-9. [API Reference](#9-api-reference)
-10. [Project Architecture](#10-project-architecture)
-11. [Troubleshooting](#11-troubleshooting)
-12. [Changelog](#12-changelog)
+9. [Reading Streak (v1.6.0)](#9-reading-streak-v160)
+   - [Overview](#91-overview)
+   - [Core Concept](#92-core-concept)
+   - [UI Components](#93-ui-components)
+   - [Services](#94-services)
+   - [Settings](#95-settings)
+   - [Database](#96-database)
+10. [API Reference](#10-api-reference)
+11. [Project Architecture](#11-project-architecture)
+12. [Troubleshooting](#12-troubleshooting)
+13. [Changelog](#13-changelog)
 
 ---
 
@@ -1883,7 +1890,303 @@ dependencies:
 
 ---
 
-## 9. API Reference
+## 9. Reading Streak (v1.6.0)
+
+### 9.1 Overview
+
+The Reading Streak feature provides a **subtle consistency indicator** that respects irregular reading patterns while encouraging users to return to their reading journey. Unlike traditional streak trackers that create daily pressure, Contexta's approach affirms continuity without demanding discipline.
+
+**Core Philosophy:**
+- Not a habit tracker
+- Not daily streak pressure
+- Not a productivity metric
+- Exists to **affirm continuity**, not demand discipline
+
+### 9.2 Core Concept
+
+#### What It Measures
+
+A **"reading day"** = at least one word saved on that calendar day.
+Multiple words on the same day count as **one** reading day.
+
+**Example:**
+- Monday → saved 3 words
+- Wednesday → saved 1 word
+- Friday → saved 5 words
+
+Display: *"Words noted on 3 different days"*
+
+#### Streak Logic
+
+```dart
+class ReadingStreakData {
+  /// Total number of unique active reading days
+  final int totalActiveDays;
+  
+  /// Current consecutive streak (for future use)
+  final int currentStreak;
+  
+  /// Recent days for dot visualization (last 7 days)
+  final List<ReadingDay> recentDays;
+  
+  /// Pre-formatted display text
+  final String displayText;
+  
+  /// Whether a new day was just added (for animation)
+  final bool isNewDayAdded;
+}
+
+class ReadingDay {
+  final DateTime date;
+  final bool isActive;
+}
+```
+
+### 9.3 UI Components
+
+#### ReadingStreakIndicator Widget
+
+**Location:** `lib/widgets/reading_streak_indicator.dart`
+
+```dart
+const ReadingStreakIndicator({
+  super.key,
+  this.showDotRow = true,  // Whether to show mini dot row
+});
+```
+
+**Visual Design:**
+```
+───────────────
+✦  Words noted on 3 different days
+● ● ○ ●
+───────────────
+```
+
+**Typography:**
+- Serif font
+- Slightly smaller than body text (13px)
+- Color: text-muted
+- Italic style
+
+**Container:**
+- No card, no border, no background
+- Just text and breathing space
+
+#### Mini Dot Row (Optional)
+
+```dart
+class _DotRow extends StatelessWidget {
+  final List<ReadingDay> days;
+  // Each dot = a reading day
+  // Filled = day with at least one word
+  // Max 7 dots visible (rolling window)
+}
+```
+
+**Rules:**
+- Muted color
+- No labels
+- No interaction
+
+#### Animation Design
+
+**1. Entry Animation (First appearance)**
+```dart
+// Fade-in + upward translate
+_fadeAnimation = Tween<double>(begin: 0.0, end: 1.0);
+_slideAnimation = Tween<Offset>(
+  begin: const Offset(0, 0.2),
+  end: Offset.zero,
+);
+// Duration: 300ms, Curve: ease-out
+```
+
+**2. Increment Animation (New day added)**
+```dart
+// Text briefly dims, number updates, returns to normal
+AnimatedOpacity(
+  duration: const Duration(milliseconds: 200),
+  opacity: _isAnimatingIncrement ? 0.6 : 1.0,
+  child: content,
+);
+```
+
+**3. Haptic Feedback**
+- Very light vibration (HapticFeedback.lightImpact)
+- Only on *new day added*, not every word
+
+#### Copy Variants
+
+Rotate occasionally for variety:
+- "Words noted on {count} different days"
+- "You've returned to reading on {count} days"
+- "Your notes span {count} reading days"
+
+### 9.4 Services
+
+#### ReadingStreakService
+
+**Location:** `lib/services/reading_streak_service.dart`
+
+```dart
+class ReadingStreakService {
+  // Singleton pattern
+  static final ReadingStreakService _instance = ReadingStreakService._internal();
+  factory ReadingStreakService() => _instance;
+
+  /// Stream of streak data updates
+  Stream<ReadingStreakData> get streakStream;
+
+  /// Initialize the service
+  Future<void> initialize();
+
+  /// Record a reading day (call when a word is saved)
+  Future<void> recordReadingDay();
+
+  /// Get current streak data
+  Future<ReadingStreakData> getStreakData();
+
+  /// Dispose resources
+  void dispose();
+}
+```
+
+**Integration in BookDetailScreen:**
+```dart
+// When a new word is added:
+updatedBook = widget.book.addWord(newWord);
+
+// Record reading day for streak tracking
+ReadingStreakService().recordReadingDay();
+```
+
+### 9.5 Settings
+
+#### SettingsSheet Widget
+
+**Location:** `lib/widgets/settings_sheet.dart`
+
+```dart
+class SettingsSheet extends StatefulWidget {
+  final bool showReadingStreak;
+  final VoidCallback onToggleReadingStreak;
+  final bool isDarkMode;
+  final VoidCallback onToggleTheme;
+  final VoidCallback onClose;
+  final List<Book> books;
+  final VoidCallback onExportAll;
+}
+```
+
+**Settings Options:**
+
+1. **Theme Mode Toggle**
+   - Title: "Light mode" / "Dark mode" (dynamic)
+   - Description: "Switch between light and dark appearance"
+   - Toggles app theme immediately
+
+2. **Reading Consistency Toggle**
+   - Title: "Show reading consistency"
+   - Description: "Display a subtle indicator of your reading activity"
+   - Default: **ON**
+   - Stored in SharedPreferences
+
+3. **Export All Words Action**
+   - Title: "Export all words"
+   - Description: "Export vocabulary from all books"
+   - Only visible when books have words
+   - Opens ExportOptionsSheet
+
+**Implementation Notes:**
+- Uses StatefulWidget for immediate toggle feedback
+- Local state mirrors props for instant UI updates
+- Calls parent callbacks to persist changes
+
+#### StorageService Integration
+
+```dart
+// Storage keys
+static const String _showReadingStreakKey = 'contexta_show_reading_streak';
+
+// Save reading streak visibility preference
+Future<bool> saveShowReadingStreak(bool show);
+
+// Load reading streak visibility preference (default: true)
+bool loadShowReadingStreak();
+```
+
+### 9.6 Database
+
+#### Migration v1 → v2
+
+**Location:** `lib/services/database/migrations.dart`
+
+```dart
+static Future<void> _migrateV1ToV2(Database db) async {
+  await db.execute('''
+    CREATE TABLE IF NOT EXISTS reading_days (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      date TEXT NOT NULL UNIQUE,
+      created_at TEXT NOT NULL
+    )
+  ''');
+
+  await db.execute('''
+    CREATE INDEX IF NOT EXISTS idx_reading_days_date 
+    ON reading_days (date DESC)
+  ''');
+}
+```
+
+**Schema:**
+- `date`: TEXT (yyyy-MM-dd format, local timezone)
+- `created_at`: TEXT (ISO 8601 timestamp)
+
+### 9.7 File Structure
+
+```
+lib/
+├── services/
+│   ├── reading_streak_service.dart   # NEW
+│   ├── storage_service.dart          # MODIFIED (settings)
+│   └── database/
+│       ├── database_service.dart     # MODIFIED (version 2)
+│       └── migrations.dart           # MODIFIED (v2 migration)
+├── widgets/
+│   ├── reading_streak_indicator.dart # NEW
+│   └── settings_sheet.dart           # NEW
+├── screens/
+│   ├── library_screen.dart           # MODIFIED
+│   │   ├── ReadingStreakIndicator    # Integrated
+│   │   ├── _SettingsButton           # NEW widget
+│   │   └── _showSettings()           # NEW method
+│   └── book_detail_screen.dart       # MODIFIED
+│       └── recordReadingDay()        # Called on word add
+└── main.dart                         # MODIFIED
+    ├── ReadingStreakService init     # Initialized
+    └── showReadingStreak state       # Managed
+```
+
+### 9.8 Psychology & Design Rationale
+
+**Why This Works:**
+- Encourages return without guilt
+- Rewards *presence*, not frequency
+- Feels reflective, not competitive
+- Aligns with how real readers read
+
+**What This Feature Is NOT:**
+❌ Not a habit tracker
+❌ Not daily streak pressure
+❌ Not a productivity metric
+❌ Not visible everywhere
+
+It exists to **affirm continuity**, not demand discipline.
+
+---
+
+## 10. API Reference
 
 ### PerplexityService
 
@@ -1940,7 +2243,7 @@ ExplanationLevel loadExplanationLevel();
 
 ---
 
-## 10. Project Architecture
+## 11. Project Architecture
 
 ### High-Level Architecture
 
@@ -2056,7 +2359,7 @@ class _MyAppState extends State<MyApp> {
 
 ---
 
-## 11. Troubleshooting
+## 12. Troubleshooting
 
 ### Common Issues
 
@@ -2221,9 +2524,60 @@ dependencies:
 
 ---
 
-## 12. Changelog
+## 13. Changelog
 
 All notable changes to Contexta are documented here.
+
+### [1.6.0] - 2026-01-30
+
+#### Added - Reading Streak (Subtle Consistency Indicator)
+*Commit: feat: Add reading streak feature for continuity tracking*
+
+- **ReadingStreakService**
+  - Singleton service for streak data management
+  - Records unique reading days (one word = one day)
+  - Calculates current streak and total active days
+  - Stream-based updates for reactive UI
+  - Light haptic feedback on new day
+
+- **ReadingStreakIndicator Widget**
+  - Subtle serif text display
+  - Entry animation (fade + slide, 300ms)
+  - Increment animation (dim effect, 200ms)
+  - Mini dot row showing last 7 days
+  - Copy variant rotation for variety
+
+- **Settings System**
+  - New SettingsSheet bottom sheet (StatefulWidget)
+  - Theme mode toggle (light/dark)
+  - "Show reading consistency" toggle
+  - Export all words action
+  - Persisted via SharedPreferences
+  - Accessible from library app bar
+
+- **UI Consolidation**
+  - Moved theme toggle from app bar to settings
+  - Moved export all button from app bar to settings
+  - Cleaner app bar with single settings button
+  - Immediate toggle feedback with local state
+
+- **Database Migration v2**
+  - New `reading_days` table
+  - Unique date constraint (yyyy-MM-dd)
+  - Index for fast date lookups
+
+- **UI Integration**
+  - Settings button in library app bar
+  - Streak indicator below "My Books" header
+  - Respects user toggle preference
+
+- **Philosophy**
+  - Not a habit tracker
+  - Affirms continuity without pressure
+  - Rewards presence, not frequency
+  - Aligns with real reading patterns
+
+---
 
 ### [1.5.1] - 2026-01-30
 

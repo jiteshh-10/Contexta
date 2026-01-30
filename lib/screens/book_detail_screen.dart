@@ -16,6 +16,7 @@ import '../widgets/word_frequency_card.dart';
 import '../widgets/export_options_sheet.dart';
 import '../services/perplexity_service.dart';
 import '../services/storage_service.dart';
+import '../services/reading_streak_service.dart';
 
 /// Sort options for word collection
 enum SortOption {
@@ -163,6 +164,9 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
           lookupCount: 1,
         );
         updatedBook = widget.book.addWord(newWord);
+
+        // Record reading day for streak tracking
+        ReadingStreakService().recordReadingDay();
       }
 
       widget.onUpdateBook(updatedBook);

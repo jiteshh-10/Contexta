@@ -8,6 +8,7 @@ import 'models/book.dart';
 import 'services/storage_service.dart';
 import 'services/database/database_service.dart';
 import 'services/connectivity_service.dart';
+import 'services/reading_streak_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -42,6 +43,10 @@ Future<void> _initializeServices() async {
   // Initialize connectivity monitoring
   await ConnectivityService().initialize();
   debugPrint('ConnectivityService: Initialized');
+
+  // Initialize reading streak tracking
+  await ReadingStreakService().initialize();
+  debugPrint('ReadingStreakService: Initialized');
 }
 
 /// Main application widget
@@ -60,6 +65,9 @@ class _ContextaAppState extends State<ContextaApp> {
   // Books state - centralized for persistence
   List<Book> _books = [];
 
+  // Reading streak visibility setting
+  bool _showReadingStreak = true;
+
   // Storage service instance
   final StorageService _storage = StorageService();
 
@@ -73,6 +81,7 @@ class _ContextaAppState extends State<ContextaApp> {
   void dispose() {
     // Clean up services to prevent memory leaks
     ConnectivityService().dispose();
+    ReadingStreakService().dispose();
     super.dispose();
   }
 
@@ -107,10 +116,14 @@ class _ContextaAppState extends State<ContextaApp> {
         themeMode = ThemeMode.dark;
       }
 
+      // Load reading streak visibility preference
+      final showReadingStreak = _storage.loadShowReadingStreak();
+
       if (mounted) {
         setState(() {
           _books = savedBooks;
           _themeMode = themeMode;
+          _showReadingStreak = showReadingStreak;
         });
       }
     } catch (e) {
@@ -194,6 +207,19 @@ class _ContextaAppState extends State<ContextaApp> {
     _storage.saveBooks(_books);
   }
 
+  /// Toggle reading streak visibility
+  void _toggleReadingStreak() {
+    setState(() {
+      _showReadingStreak = !_showReadingStreak;
+    });
+
+    // Persist preference
+    _storage.saveShowReadingStreak(_showReadingStreak);
+
+    // Haptic feedback
+    HapticFeedback.lightImpact();
+  }
+
   @override
   Widget build(BuildContext context) {
     // Update system UI overlay style based on theme
@@ -229,6 +255,8 @@ class _ContextaAppState extends State<ContextaApp> {
                   onAddBook: _addBook,
                   onRemoveBook: _removeBook,
                   onUpdateBook: _updateBook,
+                  showReadingStreak: _showReadingStreak,
+                  onToggleReadingStreak: _toggleReadingStreak,
                 ),
       ),
     );

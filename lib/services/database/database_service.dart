@@ -22,7 +22,7 @@ class DatabaseService {
   static const String _databaseName = 'contexta.db';
 
   // Current database version - increment when schema changes
-  static const int _databaseVersion = 1;
+  static const int _databaseVersion = 2;
 
   /// Get database instance, initializing if needed
   Future<Database> get database async {
