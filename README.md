@@ -37,61 +37,276 @@ Contexta leverages AI (Perplexity API) to explain words in the context of your c
 
 ## Features
 
-### 📚 Personal Library
-- Add books you're currently reading with title and author
-- Visual book cards with subtle animations
-- Persistent storage across app sessions
-- Empty state with branded illustration
+### 📚 Personal Library (v1.0.0)
+- **Add books** you're currently reading with title and author
+- **Visual book cards** with stacked paper effect and subtle animations
+- **Persistent storage** across app sessions via SharedPreferences
+- **Empty state** with branded illustration and CTA
+- **Book management** - delete books with smooth animations
+- **Stacked paper effect** - realistic layered card appearance
 
-### 🔍 Contextual Word Explanations
-- Enter any word you encounter while reading
-- AI-powered explanations using Perplexity API
-- Explanations tailored to your book's context
-- Short definition + detailed contextual meaning
+**Use Case:** Build your personal reading collection without internet connectivity
 
-### 📝 Word Collection
-- Save explained words to each book
-- View your vocabulary collection per book
-- Edit words and refetch explanations
-- Remove words with haptic feedback
+### 🔍 Contextual Word Explanations (v1.0.0)
+- **AI-powered explanations** using Perplexity's `sonar` model
+- **Book-aware context** - explains words based on book title, author, and genre
+- **Two-part format** - short definition (4-5 words) + detailed explanation (2-3 sentences)
+- **Smart response handling** - automatically extracts structured responses
+- **Error handling** - graceful fallback when API is unavailable
+- **Timeout protection** - 30-second request timeout to prevent hanging
 
-### 🌓 Dark Mode
-- Automatic system theme detection
-- Manual toggle between light and dark
-- Carefully crafted color palettes for both modes
-- Reduced eye strain for nighttime reading
+**Use Case:** Understand challenging vocabulary in literary context without breaking reading flow
+**Example:** Instead of "love: affection", get: "In *The Brothers Karamazov*, love transcends romance—it's Father Zosima's imperative of *active love*, deliberately embracing neighbors amid suffering."
 
-### ✨ Micro-interactions
-- Smooth fade-in animations (700ms)
-- Button press scaling (0.97x)
-- Loading dots animation
-- Haptic feedback on destructive actions
+### 📝 Word Collection Management (v1.0.0)
+- **Save explained words** to each book permanently
+- **View collections** organized per book
+- **Edit words** and refetch explanations with updated context
+- **Remove words** with haptic feedback confirmation
+- **Multiple sort options** - Recent, Oldest, A-Z, Z-A
+- **Word metadata** - timestamp, relative time ("2h ago"), formatted dates
+- **Bulk operations** - manage large word collections efficiently
+
+**Use Case:** Build a personalized vocabulary glossary for each book; study before book discussions or exams
+
+### ⚡ Offline-First Word Explanations (v1.1.0)
+- **Local caching** - store explanations on device for instant retrieval
+- **Search across cached words** - query previously explained words without API
+- **Reduced API usage** - reuse cached explanations to save costs
+- **Sync-on-demand** - refresh explanations only when explicitly requested
+- **Database persistence** - SQLite-based storage for reliability
+
+**Use Case:** Reference previously learned words without internet connection or API rate limiting
+
+### 🎯 Context-Aware Rephrasing Levels (v1.1.0)
+- **Three explanation tiers:**
+  - **Simple** - Basic definition and one-sentence explanation
+  - **Intermediate** - Standard explanation (default)
+  - **Advanced** - In-depth analysis with literary references and context
+
+- **Toggle between levels** - switch explanation complexity on the fly
+- **Temperature control** - Simple (0.2) for focused responses, Advanced (0.5) for creative analysis
+- **Progressive learning** - start simple and dig deeper as needed
+
+**Use Case:** Match explanation depth to your reading difficulty and learning pace
+
+### 📊 Word Frequency Per Book (v1.2.0)
+- **Track word occurrences** - see how many times you explained each word
+- **Frequency badges** - visual indicators (1, 2, 3+ times)
+- **Identify patterns** - discover which words appear repeatedly across books
+- **Learning insights** - words you encounter multiple times might be worth memorizing
+- **Color-coded frequency** - green (rare), yellow (occasional), red (frequent)
+
+**Use Case:** Identify and focus on recurring challenging vocabulary in your reading
+
+### 🏷️ Difficulty Reason Tags (v1.3.0)
+- **Seven difficulty categories:**
+  - **Archaic** - Old-fashioned or obsolete words
+  - **Technical** - Subject-specific terminology
+  - **Figurative** - Idioms, metaphors, symbolism
+  - **Cultural** - Culture or region-specific references
+  - **Contextual** - Meaning depends on surrounding text
+  - **Pronunciation** - Difficult to pronounce words
+  - **Other** - Miscellaneous
+
+- **Auto-tagged explanations** - AI analyzes why a word is difficult
+- **Filter by reason** - find all archaic words or technical terms separately
+- **Visual indicators** - quick identification of difficulty sources
+
+**Use Case:** Understand *why* a word is challenging; learn similar types of difficult words together
+
+### 🔎 Global Search Across Books (v1.4.0)
+- **Full-text search** across all words in all books
+- **Instant results** - filter as you type
+- **Search metadata** - displays book title, timestamp, frequency count
+- **Quick navigation** - tap search result to view full explanation
+- **No API calls** - searches local cached data for speed
+
+**Use Case:** Find words you've previously learned across your entire library; review vocabulary quickly
+
+### 📤 Export Words (v1.5.0)
+- **Multiple export formats:**
+  - **CSV** - for spreadsheets and study apps (word, explanation, book, date)
+  - **JSON** - for backup and data portability
+  - **Markdown** - formatted for note-taking apps
+
+- **Selective export** - choose specific book or all words
+- **Share-friendly** - copy to clipboard or email exports
+- **Rich formatting** - preserve explanations and metadata
+- **Import-ready** - exports can be imported into Anki, Quizlet, notion, etc.
+
+**Use Case:** Create flashcard decks in Anki/Quizlet, backup your word collection, share with study groups
+
+### 🔥 Reading Streak (v1.6.0)
+- **Motivation tracking** - maintain daily reading consistency
+- **Streak counter** - consecutive days looking up words
+- **Max streak display** - shows your best streak ever
+- **Visual celebration** - badge animation at milestones
+- **Timezone awareness** - counts based on local date/time
+- **Streak reset prevention** - one grace day before streak breaks
+
+**Use Case:** Gamify your reading habit; stay motivated to engage with challenging books daily
+
+### 💬 Quote Capture (v1.7.0)
+- **Capture meaningful quotes** while looking up words
+- **Associated with books** - quotes are organized per book
+- **Searchable collection** - find quotes across all books
+- **Edit and organize** - modify captured quotes anytime
+- **Share-ready** - formatted for social media or note-taking
+- **Highlights importance** - mark passages that resonate with you
+
+**Use Case:** Build a personal collection of memorable passages; create quote journals organized by book
+
+### 🌓 Dark Mode Refinement (v1.8.0)
+- **Automatic system detection** - respects device theme settings
+- **Manual toggle** - switch between light/dark anytime
+- **Warm color palette** - brown-based dark theme to reduce eye strain
+- **Sophisticated shadows** - contextual shadow system for dark mode
+- **Consistent branding** - warm ink blue accent in both modes
+- **Theme persistence** - remembers user preference
+
+**Use Case:** Comfortable reading at any time; reduce eye strain during nighttime reading sessions
+
+**Light Mode Colors:**
+- Background: Warm beige (#F5F1E8)
+- Accent: Ink Blue (#1A4B7C)
+- Text: Charcoal (#2D2D2D)
+
+**Dark Mode Colors:**
+- Background: Deep brown-black (#1E1B18)
+- Accent: Light Ink Blue (#7B8AB5)
+- Text: Warm off-white (#EDE6D8)
+
+### 📖 Shelf Interaction (v1.9.0) ⭐ **Latest**
+- **Premium spatial ritual** - transforms book addition into an intentional experience
+- **Shelf opening animation** - shelf expands from top (160ms easeOutCubic)
+- **Real-time preview card** - see book appear in form as you type title
+- **Flying book animation** - book flies from form to library (440ms)
+- **Arc trajectory** - -50px parabolic offset for authentic movement
+- **Scale phases** - lift (1.0→1.05), travel (1.05→0.96), settle (0.96→1.0)
+- **Shadow elevation** - dynamic elevation tracking book height during flight
+- **Highlight glow** - newly placed books glow for 1 second (25% opacity)
+- **Auto-scroll** - automatically scrolls to show newly added book
+- **Haptic feedback** - lightImpact on open, selectionClick on settle
+
+**Use Case:** Make adding books feel intentional and premium; create a satisfying ritual around building your library
+
+**Animation Breakdown:**
+- Shelf Opens: 160ms (responsive, snappy)
+- Content Reveals: 60ms delay → 100ms fade (staggered)
+- Book Flies: 440ms with -50px arc (authentic trajectory)
+- Highlight Glows: 250ms in → 350ms hold → 400ms out
 
 ---
 
-## How to Use
+## Feature Roadmap & Versions
 
-### Getting Started
+| Version | Feature | Release Date | Status |
+|---------|---------|--------------|--------|
+| v1.0.0 | Core Library, Word Explanations, Collections, Theme System | Q4 2025 | ✅ Stable |
+| v1.1.0 | Offline Caching, Rephrasing Levels | Q4 2025 | ✅ Stable |
+| v1.2.0 | Word Frequency Tracking | Q4 2025 | ✅ Stable |
+| v1.3.0 | Difficulty Tags | Q1 2026 | ✅ Stable |
+| v1.4.0 | Global Search | Q1 2026 | ✅ Stable |
+| v1.5.0 | Export (CSV/JSON/Markdown) | Q1 2026 | ✅ Stable |
+| v1.6.0 | Reading Streak | Q1 2026 | ✅ Stable |
+| v1.7.0 | Quote Capture | Q1 2026 | ✅ Stable |
+| v1.8.0 | Dark Mode Refinement | Q1 2026 | ✅ Stable |
+| v1.9.0 | Shelf Interaction (Premium UX) | Jan 2026 | ✅ Latest |
 
-1. **Add a Book**
-   - Tap the "+" button or "Add a Book" on the empty library screen
-   - Enter the book title and author name
-   - Tap "Add to Library"
+---
 
-2. **Look Up a Word**
-   - Tap on a book card to open it
+### How to Use
+
+#### Adding Books (v1.9.0 Shelf Interaction)
+
+1. **Open the Shelf**
+   - Tap the "+" button (FAB) on the library screen
+   - The shelf opens from the top with a smooth animation
+
+2. **Add Book Details**
+   - Enter the book **title** (required)
+   - Enter the **author** (optional)
+   - Watch the preview card appear in real-time
+
+3. **Place on Shelf**
+   - Tap "Place on Shelf" button
+   - Book flies from the form to your library with an arc trajectory
+   - Book lands with a settle animation and glows for 1 second
+   - App auto-scrolls to show your new book
+
+#### Looking Up Words
+
+1. **Open a Book**
+   - Tap on a book card from the library
+   - Opens the book detail screen
+
+2. **Enter a Word**
    - Type any unfamiliar word you encountered while reading
    - Tap "Explain" to get the contextual meaning
+   - Choose explanation level (Simple/Intermediate/Advanced)
+   - Word is automatically saved to collection
 
-3. **View Your Word Collection**
+3. **View & Manage Words**
    - All explained words are saved under each book
    - Tap any word to see its full explanation again
+   - View frequency count (1x, 2x, 3x+), difficulty reason, and capture date
    - Use "Edit" to modify the word and get a new explanation
    - Use "Remove" to delete words you no longer need
 
-4. **Switch Themes**
-   - Tap the sun/moon icon in the top-right corner
-   - The app remembers your preference
+#### Searching Words (v1.4.0)
+
+1. **Open Global Search**
+   - Tap search icon in app bar
+   - Search across all words in all books instantly
+
+2. **Filter Results**
+   - Search displays book, frequency, and date
+   - Results are sorted by relevance
+   - Tap result to view full explanation
+
+#### Exporting & Sharing (v1.5.0)
+
+1. **Export Your Collection**
+   - Tap menu → "Export Words"
+   - Choose format: CSV, JSON, or Markdown
+   - Select book or export all
+   - Share or save to device
+
+2. **Use for Studying**
+   - Import CSV into Anki, Quizlet, or Notion
+   - Use JSON for data portability
+   - Share Markdown with study groups
+
+#### Building Reading Streaks (v1.6.0)
+
+1. **Look Up One Word Daily**
+   - Maintain consistency by explaining words each day
+   - Streak counter appears on library screen
+   - One grace day if you miss a day
+
+2. **Track Milestones**
+   - 7-day streak: You're on fire! 🔥
+   - 30-day streak: Reading habit mastered! 📚
+   - View max streak on profile
+
+#### Capturing Quotes (v1.7.0)
+
+1. **While Explaining Words**
+   - Tap "Capture Quote" button
+   - Select meaningful passage from book
+   - Quote is saved with book association
+
+2. **View Quote Collection**
+   - View all quotes organized by book
+   - Search across quote library
+   - Edit or remove quotes anytime
+
+#### Switching Themes
+
+- Tap the **sun/moon icon** in the top-right corner
+- App remembers your preference
+- Automatic theme respects device settings (or manual override)
 
 ### What Makes Contexta Different?
 
@@ -222,15 +437,17 @@ lib/
 │   └── word_entry.dart       # Word entry data model
 ├── screens/
 │   ├── splash_screen.dart    # Animated splash with logo
-│   ├── library_screen.dart   # Main library view
+│   ├── library_screen.dart   # Main library view with shelf overlay
 │   ├── book_detail_screen.dart  # Book words & input
-│   └── add_book_screen.dart  # Add new book form
+│   └── add_book_screen.dart  # [Deprecated] Add new book form (replaced by shelf)
 ├── services/
 │   ├── perplexity_service.dart  # AI API integration
 │   └── storage_service.dart     # Local persistence
 ├── theme/
 │   └── app_theme.dart        # Design tokens & themes
 └── widgets/
+    ├── shelf_overlay.dart    # [NEW] Shelf animation system (v1.9.0)
+    ├── add_book_panel.dart   # [NEW] Book entry form panel (v1.9.0)
     ├── book_card.dart        # Book display card
     ├── contexta_app_bar.dart # Custom app bar
     ├── contexta_bottom_sheet.dart  # Modal sheets
@@ -259,13 +476,70 @@ User Action → Screen Widget → Callback to Main →
 State Update → StorageService.save() → UI Rebuild
 ```
 
-### API Integration
+### API Integration (v1.0.0)
 
 **Perplexity API** is used for contextual word explanations:
-- Model: `sonar`
-- Max tokens: 300
-- Temperature: 0.3 (focused responses)
+- Model: `sonar` (fast, accurate)
+- Max tokens: 300 (controls response length)
+- Temperature: 0.3 (focused, less creative)
 - Custom system prompt for literary context
+- Timeout: 30 seconds
+
+**Explanation Levels (v1.1.0):**
+- **Simple** - Basic definition + simple explanation (Temperature: 0.2)
+- **Intermediate** - Standard explanation (Temperature: 0.3) [Default]
+- **Advanced** - In-depth analysis + literary references (Temperature: 0.5)
+
+### Offline Architecture (v1.1.0)
+
+- **Cache Layer** - SQLite database stores all explanations locally
+- **Auto-Cache** - Every API response is saved automatically
+- **Sync-on-Demand** - Manually refresh explanations when needed
+- **Search** - Full-text search on cached data (no API calls)
+- **Fallback** - If API fails, retrieve from cache automatically
+
+### Word Tracking System (v1.2.0 + v1.3.0)
+
+- **Frequency Counting** - Increments each time word is looked up
+- **Difficulty Tags** - Auto-categorized by AI (7 categories)
+- **Metadata** - Timestamp, book context, explanation level used
+- **Visual Indicators** - Color-coded frequency badges and tag icons
+
+### Export System (v1.5.0)
+
+- **CSV Export** - Headers: word, short_definition, explanation, book, date, frequency, difficulty
+- **JSON Export** - Structured data for portability and backup
+- **Markdown Export** - Formatted for note-taking apps (Obsidian, Notion)
+- **Selective Export** - Per-book or all-books options
+
+### Reading Streak Engine (v1.6.0)
+
+- **Daily Tracking** - Checks if word was explained today (timezone-aware)
+- **Streak Counter** - Increments on consecutive days
+- **Max Streak** - Tracks historical best streak
+- **Grace Period** - Allows one missed day without breaking streak
+- **Reset Logic** - Resets after 2+ consecutive days missed
+
+### Quote System (v1.7.0)
+
+- **Association** - Quotes linked to specific book
+- **Searchable** - Full-text search across all quotes
+- **Editable** - Modify quotes anytime
+- **Export-ready** - Quotes included in word exports
+
+### Animation System (v1.9.0)
+
+**Shelf Overlay:**
+- ShelfController: ChangeNotifier-based state management
+- Two AnimationControllers: Shelf expansion + Book placement
+- Dim overlay: 8% opacity background
+- Flying book: Arc trajectory with shadow elevation
+- Position tracking: GlobalKey for precise animation targets
+
+**Component Architecture:**
+- `ShelfOverlay` - Parent animation orchestrator (407 lines)
+- `AddBookPanel` - Form UI with preview card (362 lines)
+- `LibraryScreen` - Integration + highlight + scroll logic (572 lines)
 
 ---
 
@@ -324,11 +598,16 @@ Contexta's design follows a **"quiet luxury"** aesthetic — elegant, understate
 - Large: `16px` - Sheets, modals
 - XLarge: `24px` - Pills, FAB
 
-### Animations
+### Animations & Timings
 
-| Animation | Duration | Curve | Usage |
-|-----------|----------|-------|-------|
-| Fade In | 700ms | easeOut | Screen transitions |
+| Animation | Duration | Curve | Details |
+|-----------|----------|-------|---------|
+| Shelf Open | 160ms | easeOutCubic | Responsive shelf expansion |
+| Content Reveal | 60ms delay + 100ms | easeOut | Staggered form appearance |
+| Book Placement | 440ms | easeOutCubic | Flying book with arc trajectory |
+| Book Arc | -50px amplitude | Parabolic | Visible parabolic flight path |
+| Highlight Glow | 1000ms total | Sequence | 250ms fade-in, 350ms hold, 400ms fade-out |
+| Fade In (Screens) | 700ms | easeOut | Screen transitions |
 | Button Press | 100ms | easeOut | Tap feedback |
 | Sheet Enter | 300ms | easeOut | Bottom sheets |
 | Loading Dots | 600ms | easeInOut | API loading |
