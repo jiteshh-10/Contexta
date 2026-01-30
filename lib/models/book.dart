@@ -63,6 +63,29 @@ class Book {
   /// Check if book has any words
   bool get hasWords => words.isNotEmpty;
 
+  /// Get words sorted by lookup count (most looked up first)
+  /// Returns top N difficult words based on lookup frequency
+  List<WordEntry> getTopDifficultWords({int limit = 10}) {
+    if (words.isEmpty) return [];
+
+    final sorted = [...words];
+    sorted.sort((a, b) {
+      // Primary sort by lookup count (descending)
+      final countComparison = b.lookupCount.compareTo(a.lookupCount);
+      if (countComparison != 0) return countComparison;
+      // Secondary sort by timestamp (most recent first)
+      return b.timestamp.compareTo(a.timestamp);
+    });
+
+    return sorted.take(limit).toList();
+  }
+
+  /// Check if book has any words looked up more than once
+  bool get hasRepeatedWords => words.any((w) => w.lookupCount > 1);
+
+  /// Get total lookups across all words
+  int get totalLookups => words.fold(0, (sum, w) => sum + w.lookupCount);
+
   /// Convert to JSON for persistence
   Map<String, dynamic> toJson() {
     return {

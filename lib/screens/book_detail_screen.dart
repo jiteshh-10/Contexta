@@ -12,6 +12,7 @@ import '../widgets/word_explanation_sheet.dart';
 import '../widgets/loading_dots.dart';
 import '../widgets/contexta_bottom_sheet.dart';
 import '../widgets/explanation_level_selector.dart';
+import '../widgets/word_frequency_card.dart';
 import '../services/perplexity_service.dart';
 import '../services/storage_service.dart';
 
@@ -54,6 +55,7 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
   String? _errorMessage;
   SortOption _sortOption = SortOption.recent;
   ExplanationLevel _explanationLevel = ExplanationLevel.simple;
+  bool _isFrequencyExpanded = false;
 
   @override
   void initState() {
@@ -135,16 +137,33 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
     if (!mounted) return;
 
     if (result.success && result.explanation != null) {
-      // Create new word entry with API explanation
-      final newWord = WordEntry(
-        id: DateTime.now().millisecondsSinceEpoch.toString(),
-        word: word,
-        explanation: result.explanation!,
-        bookId: widget.book.id,
+      // Check if word already exists in collection (case-insensitive)
+      final existingWordIndex = widget.book.words.indexWhere(
+        (w) => w.word.toLowerCase() == word.toLowerCase(),
       );
 
-      // Update book with new word
-      final updatedBook = widget.book.addWord(newWord);
+      Book updatedBook;
+
+      if (existingWordIndex >= 0) {
+        // Word exists - increment lookup count and update explanation
+        final existingWord = widget.book.words[existingWordIndex];
+        final updatedWord = existingWord.copyWith(
+          explanation: result.explanation,
+          lookupCount: existingWord.lookupCount + 1,
+        );
+        updatedBook = widget.book.updateWord(updatedWord);
+      } else {
+        // New word - create new entry
+        final newWord = WordEntry(
+          id: DateTime.now().millisecondsSinceEpoch.toString(),
+          word: word,
+          explanation: result.explanation!,
+          bookId: widget.book.id,
+          lookupCount: 1,
+        );
+        updatedBook = widget.book.addWord(newWord);
+      }
+
       widget.onUpdateBook(updatedBook);
 
       // Clear input and reset state
@@ -320,6 +339,7 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
   @override
   Widget build(BuildContext context) {
     final sortedWords = _sortedWords;
+    final topDifficultWords = widget.book.getTopDifficultWords(limit: 10);
 
     return Scaffold(
       appBar: ContextaAppBar(title: widget.book.title, onBack: widget.onBack),
@@ -332,6 +352,24 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
               child: _buildWordInputCard(),
             ),
           ),
+
+          // Word Frequency Card (show if there are enough words to make it meaningful)
+          if (topDifficultWords.isNotEmpty && widget.book.words.length >= 3)
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                child: WordFrequencyCard(
+                  topWords: topDifficultWords,
+                  onWordTap: _showWordDetails,
+                  isExpanded: _isFrequencyExpanded,
+                  onToggleExpand: () {
+                    setState(() {
+                      _isFrequencyExpanded = !_isFrequencyExpanded;
+                    });
+                  },
+                ),
+              ),
+            ),
 
           // Divider and sort controls
           SliverToBoxAdapter(

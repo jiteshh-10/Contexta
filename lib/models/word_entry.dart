@@ -6,6 +6,7 @@ class WordEntry {
   final String explanation;
   final String bookId;
   final DateTime timestamp;
+  final int lookupCount;
 
   WordEntry({
     required this.id,
@@ -13,6 +14,7 @@ class WordEntry {
     required this.explanation,
     required this.bookId,
     DateTime? timestamp,
+    this.lookupCount = 1,
   }) : timestamp = timestamp ?? DateTime.now();
 
   /// Create a copy with modified fields
@@ -22,6 +24,7 @@ class WordEntry {
     String? explanation,
     String? bookId,
     DateTime? timestamp,
+    int? lookupCount,
   }) {
     return WordEntry(
       id: id ?? this.id,
@@ -29,7 +32,13 @@ class WordEntry {
       explanation: explanation ?? this.explanation,
       bookId: bookId ?? this.bookId,
       timestamp: timestamp ?? this.timestamp,
+      lookupCount: lookupCount ?? this.lookupCount,
     );
+  }
+
+  /// Increment lookup count
+  WordEntry incrementLookup() {
+    return copyWith(lookupCount: lookupCount + 1);
   }
 
   /// Format timestamp as relative time
@@ -64,6 +73,7 @@ class WordEntry {
       'explanation': explanation,
       'bookId': bookId,
       'timestamp': timestamp.toIso8601String(),
+      'lookupCount': lookupCount,
     };
   }
 
@@ -75,6 +85,7 @@ class WordEntry {
       explanation: json['explanation'] as String,
       bookId: json['bookId'] as String,
       timestamp: DateTime.parse(json['timestamp'] as String),
+      lookupCount: json['lookupCount'] as int? ?? 1,
     );
   }
 

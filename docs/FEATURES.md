@@ -1,6 +1,6 @@
 # Contexta - Complete Feature Documentation
 
-> **Version:** 1.1.0  
+> **Version:** 1.2.0  
 > **Last Updated:** January 30, 2026  
 > **Authors:** Development Team  
 > **Repository:** github.com/jiteshh-10/Contexta
@@ -29,10 +29,16 @@
    - [UI Components](#43-ui-components)
    - [Integration](#44-integration)
    - [Customization](#45-customization)
-5. [API Reference](#5-api-reference)
-6. [Project Architecture](#6-project-architecture)
-7. [Troubleshooting](#7-troubleshooting)
-8. [Changelog](#8-changelog)
+5. [Word Frequency Per Book (v1.2.0)](#5-word-frequency-per-book-v120)
+   - [Overview](#51-overview)
+   - [How It Works](#52-how-it-works)
+   - [UI Components](#53-ui-components)
+   - [Display Logic](#54-display-logic)
+   - [Data Model](#55-data-model)
+6. [API Reference](#6-api-reference)
+7. [Project Architecture](#7-project-architecture)
+8. [Troubleshooting](#8-troubleshooting)
+9. [Changelog](#9-changelog)
 
 ---
 
@@ -867,7 +873,237 @@ decoration: BoxDecoration(
 
 ---
 
-## 5. API Reference
+## 5. Word Frequency Per Book (v1.2.0)
+
+*Commit: feat: Add word frequency tracking per book*
+
+### 5.1 Overview
+
+The Word Frequency feature helps readers identify patterns in their vocabulary challenges. When users look up the same word multiple times, it indicates a persistent difficulty — these "challenging words" are tracked and displayed prominently.
+
+**Key Benefits:**
+- ✅ Identify words you struggle with most
+- ✅ Academic feel with ranked vocabulary
+- ✅ Zero distraction — minimal, elegant UI
+- ✅ Per-book tracking for contextual insights
+- ✅ Instant visibility without charts or complex visualizations
+
+**Design Philosophy:**
+> "Readers like seeing patterns in what they struggle with."
+
+The feature provides insight without overwhelming — a simple ranked list with count badges, no charts needed.
+
+### 5.2 How It Works
+
+#### Lookup Count Tracking
+
+Every time a user looks up the same word within a book:
+
+1. **First lookup:** Word is added to collection with `lookupCount = 1`
+2. **Subsequent lookups:** Existing word's `lookupCount` is incremented
+3. **Explanation updated:** Latest explanation replaces the old one
+
+```dart
+// When explaining a word
+final existingWordIndex = book.words.indexWhere(
+  (w) => w.word.toLowerCase() == word.toLowerCase(),
+);
+
+if (existingWordIndex >= 0) {
+  // Word exists - increment lookup count
+  final existingWord = book.words[existingWordIndex];
+  final updatedWord = existingWord.copyWith(
+    explanation: newExplanation,
+    lookupCount: existingWord.lookupCount + 1,
+  );
+  // Update book...
+} else {
+  // New word - create with lookupCount = 1
+  final newWord = WordEntry(..., lookupCount: 1);
+  // Add to book...
+}
+```
+
+#### Case-Insensitive Matching
+
+Words are matched case-insensitively:
+- "Telescreen", "telescreen", "TELESCREEN" → all increment the same word
+
+### 5.3 UI Components
+
+#### WordFrequencyCard
+
+**Location:** `lib/widgets/word_frequency_card.dart`
+
+A collapsible card displaying top challenging words with visual ranking.
+
+```dart
+WordFrequencyCard(
+  topWords: book.getTopDifficultWords(limit: 10),
+  onWordTap: (word) => showWordDetails(word),
+  isExpanded: _isFrequencyExpanded,
+  onToggleExpand: () => setState(() => _isFrequencyExpanded = !_isFrequencyExpanded),
+)
+```
+
+**Visual Elements:**
+
+| Element | Description |
+|---------|-------------|
+| Header Icon | Trending up icon (📈) with primary color background |
+| Title | "Challenging Words" |
+| Subtitle | "Words you've looked up multiple times" |
+| Word List | Ranked list with badges |
+| Expand Button | "Show All X" / "Show Less" toggle |
+
+#### Ranking Badges
+
+Top 3 words receive special medal-style badges:
+
+| Rank | Badge Color | Hex Values |
+|------|-------------|------------|
+| 🥇 1st | Gold | Background: `#D4AF37` @ 20%, Text: `#B8860B` |
+| 🥈 2nd | Silver | Background: `#C0C0C0` @ 30%, Text: `#808080` |
+| 🥉 3rd | Bronze | Background: `#CD7F32` @ 20%, Text: `#CD7F32` |
+| 4th+ | Muted | Border color @ 50%, Muted text |
+
+#### Count Badge
+
+Each word displays its lookup count with an eye icon:
+
+```dart
+Container(
+  child: Row(
+    children: [
+      Icon(Icons.visibility_outlined, size: 12),
+      SizedBox(width: 4),
+      Text('$count'),  // e.g., "5"
+    ],
+  ),
+)
+```
+
+**High Frequency Styling:** Words with 5+ lookups get accent-colored badges.
+
+### 5.4 Display Logic
+
+#### When the Card Appears
+
+The "Challenging Words" card is shown when:
+
+```dart
+if (topDifficultWords.isNotEmpty && widget.book.words.length >= 3)
+```
+
+| Condition | Card Shown? |
+|-----------|-------------|
+| Book has 0-2 words | ❌ No |
+| Book has 3+ words | ✅ Yes |
+| All words looked up once | ✅ Yes (shows top by recency) |
+| Some words looked up 2+ times | ✅ Yes (prioritizes high counts) |
+
+#### Display Limits
+
+| State | Words Shown |
+|-------|-------------|
+| Collapsed (default) | Top 5 words |
+| Expanded | Up to 10 words |
+| Maximum tracked | Unlimited (all words in book) |
+
+#### Sorting Algorithm
+
+Words are sorted by:
+1. **Primary:** Lookup count (descending)
+2. **Secondary:** Timestamp (most recent first)
+
+```dart
+sorted.sort((a, b) {
+  final countComparison = b.lookupCount.compareTo(a.lookupCount);
+  if (countComparison != 0) return countComparison;
+  return b.timestamp.compareTo(a.timestamp);
+});
+```
+
+### 5.5 Data Model
+
+#### WordEntry Updates
+
+**Location:** `lib/models/word_entry.dart`
+
+```dart
+class WordEntry {
+  final String id;
+  final String word;
+  final String explanation;
+  final String bookId;
+  final DateTime timestamp;
+  final int lookupCount;  // NEW: Tracks lookup frequency
+
+  // Constructor with default
+  WordEntry({
+    ...
+    this.lookupCount = 1,  // Default to 1 for new words
+  });
+
+  // Increment helper
+  WordEntry incrementLookup() {
+    return copyWith(lookupCount: lookupCount + 1);
+  }
+}
+```
+
+#### Book Model Helpers
+
+**Location:** `lib/models/book.dart`
+
+```dart
+class Book {
+  /// Get words sorted by lookup count (most looked up first)
+  List<WordEntry> getTopDifficultWords({int limit = 10}) {
+    if (words.isEmpty) return [];
+    
+    final sorted = [...words];
+    sorted.sort((a, b) {
+      final countComparison = b.lookupCount.compareTo(a.lookupCount);
+      if (countComparison != 0) return countComparison;
+      return b.timestamp.compareTo(a.timestamp);
+    });
+    
+    return sorted.take(limit).toList();
+  }
+
+  /// Check if book has any words looked up more than once
+  bool get hasRepeatedWords => words.any((w) => w.lookupCount > 1);
+
+  /// Get total lookups across all words
+  int get totalLookups => words.fold(0, (sum, w) => sum + w.lookupCount);
+}
+```
+
+#### JSON Persistence
+
+Lookup count is persisted with each word:
+
+```dart
+// toJson
+{
+  'id': id,
+  'word': word,
+  'explanation': explanation,
+  'bookId': bookId,
+  'timestamp': timestamp.toIso8601String(),
+  'lookupCount': lookupCount,  // NEW
+}
+
+// fromJson (with backward compatibility)
+lookupCount: json['lookupCount'] as int? ?? 1,
+```
+
+**Backward Compatibility:** Existing words without `lookupCount` default to `1`.
+
+---
+
+## 6. API Reference
 
 ### PerplexityService
 
@@ -924,7 +1160,7 @@ ExplanationLevel loadExplanationLevel();
 
 ---
 
-## 6. Project Architecture
+## 7. Project Architecture
 
 ### High-Level Architecture
 
@@ -1040,7 +1276,7 @@ class _MyAppState extends State<MyApp> {
 
 ---
 
-## 7. Troubleshooting
+## 8. Troubleshooting
 
 ### Common Issues
 
@@ -1132,9 +1368,40 @@ dependencies:
 
 ---
 
-## 8. Changelog
+## 9. Changelog
 
 All notable changes to Contexta are documented here.
+
+### [1.2.0] - 2026-01-30
+
+#### Added - Word Frequency Per Book
+*Commit: feat: Add word frequency tracking per book*
+
+- **Lookup Count Tracking**
+  - `lookupCount` field added to WordEntry model
+  - Increments each time same word is looked up
+  - Case-insensitive word matching
+  - Backward compatible (defaults to 1 for existing words)
+
+- **WordFrequencyCard Widget**
+  - Collapsible card showing top challenging words
+  - Gold/Silver/Bronze ranking badges for top 3
+  - Eye icon with count badge per word
+  - Expand/collapse to show 5 or 10 words
+  - Smooth animations (300ms, easeOutCubic)
+  - Full dark/light theme support
+
+- **Book Model Helpers**
+  - `getTopDifficultWords(limit)`: Get words sorted by frequency
+  - `hasRepeatedWords`: Check if any word looked up 2+ times
+  - `totalLookups`: Sum of all lookup counts
+
+- **Smart Display Logic**
+  - Card appears when book has 3+ words
+  - Words sorted by frequency, then recency
+  - Tapping word opens full explanation sheet
+
+---
 
 ### [1.1.0] - 2026-01-30
 
@@ -1287,6 +1554,7 @@ lib/
     ├── primary_button.dart           # Primary CTA
     ├── secondary_button.dart         # Secondary actions
     ├── word_explanation_sheet.dart   # Word detail modal
+    ├── word_frequency_card.dart      # Challenging words card (v1.2.0)
     └── word_list_item.dart           # Word list rows
 ```
 
