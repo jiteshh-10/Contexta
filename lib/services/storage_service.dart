@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/book.dart';
+import '../models/explanation_level.dart';
 
 /// Service for local data persistence
 /// Stores books and their associated word entries
@@ -16,6 +17,7 @@ class StorageService {
   static const String _booksKey = 'contexta_books';
   static const String _themeModeKey = 'contexta_theme_mode';
   static const String _firstLaunchKey = 'contexta_first_launch';
+  static const String _explanationLevelKey = 'contexta_explanation_level';
 
   /// Initialize the storage service
   /// Must be called before using any other methods
@@ -114,6 +116,22 @@ class StorageService {
   /// Mark app as launched (no longer first launch)
   Future<bool> markAsLaunched() async {
     return await _preferences.setBool(_firstLaunchKey, false);
+  }
+
+  // ============ Explanation Level ============
+
+  /// Save explanation level preference
+  Future<bool> saveExplanationLevel(ExplanationLevel level) async {
+    return await _preferences.setString(
+      _explanationLevelKey,
+      level.toStorageString(),
+    );
+  }
+
+  /// Load explanation level preference
+  ExplanationLevel loadExplanationLevel() {
+    final value = _preferences.getString(_explanationLevelKey);
+    return ExplanationLevel.fromStorageString(value);
   }
 
   // ============ Utility Methods ============
