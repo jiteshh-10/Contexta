@@ -1,34 +1,390 @@
-# Contexta - Feature Documentation
+# Contexta - Complete Feature Documentation
 
 > **Version:** 1.1.0  
 > **Last Updated:** January 30, 2026  
-> **Authors:** Development Team
+> **Authors:** Development Team  
+> **Repository:** github.com/jiteshh-10/Contexta
 
 ---
 
 ## Table of Contents
 
-1. [Offline-First Word Explanations](#1-offline-first-word-explanations)
-   - [Overview](#11-overview)
-   - [Architecture](#12-architecture)
-   - [Database Schema](#13-database-schema)
-   - [Services](#14-services)
-   - [Usage](#15-usage)
-   - [Configuration](#16-configuration)
-2. [Context-Aware Rephrasing Levels](#2-context-aware-rephrasing-levels)
-   - [Overview](#21-overview)
-   - [Explanation Levels](#22-explanation-levels)
-   - [UI Components](#23-ui-components)
-   - [Integration](#24-integration)
-   - [Customization](#25-customization)
-3. [API Reference](#3-api-reference)
-4. [Troubleshooting](#4-troubleshooting)
+1. [Project Overview](#1-project-overview)
+2. [Core Features (v1.0.0)](#2-core-features-v100)
+   - [Personal Library System](#21-personal-library-system)
+   - [Contextual Word Explanations](#22-contextual-word-explanations)
+   - [Word Collection Management](#23-word-collection-management)
+   - [Theme System](#24-theme-system)
+   - [Design System & UI Components](#25-design-system--ui-components)
+3. [Offline-First Word Explanations (v1.1.0)](#3-offline-first-word-explanations-v110)
+   - [Overview](#31-overview)
+   - [Architecture](#32-architecture)
+   - [Database Schema](#33-database-schema)
+   - [Services](#34-services)
+   - [Usage](#35-usage)
+   - [Configuration](#36-configuration)
+4. [Context-Aware Rephrasing Levels (v1.1.0)](#4-context-aware-rephrasing-levels-v110)
+   - [Overview](#41-overview)
+   - [Explanation Levels](#42-explanation-levels)
+   - [UI Components](#43-ui-components)
+   - [Integration](#44-integration)
+   - [Customization](#45-customization)
+5. [API Reference](#5-api-reference)
+6. [Project Architecture](#6-project-architecture)
+7. [Troubleshooting](#7-troubleshooting)
+8. [Changelog](#8-changelog)
 
 ---
 
-## 1. Offline-First Word Explanations
+## 1. Project Overview
 
-### 1.1 Overview
+### What is Contexta?
+
+**Contexta** is a minimalist reading companion app for curious minds. Unlike traditional dictionary apps, Contexta provides **contextual explanations** — understanding words within the literary context of the book you're reading.
+
+### The Problem
+
+When reading challenging literature, encountering an unfamiliar word breaks the reading flow. Traditional dictionaries provide generic definitions that often miss the nuanced meaning the author intended.
+
+### The Solution
+
+Contexta leverages AI (Perplexity API) to explain words in the context of your current book, providing:
+- A **short definition** (4-5 words)
+- A **contextual explanation** considering the book's themes, genre, and author's style
+
+### Example Comparison
+
+| Traditional Dictionary | Contexta |
+|----------------------|----------|
+| "Love: A strong feeling of affection" | "In *The Brothers Karamazov*, 'love' transcends romantic notions—it embodies Father Zosima's Christian imperative of **active love**, a deliberate effort to embrace neighbors amid suffering." |
+
+### Design Philosophy
+
+Contexta follows a **"quiet luxury"** aesthetic — elegant, understated, and focused on content. The interface feels like a well-crafted journal, not a tech product.
+
+---
+
+## 2. Core Features (v1.0.0)
+
+*Commit: `cdaf3e8` - Initial commit: Contexta reading companion app*
+
+### 2.1 Personal Library System
+
+The library is the heart of Contexta, organizing your reading journey.
+
+#### Features
+- Add books with title and author
+- Visual book cards with stacked paper effect
+- Persistent storage across app sessions
+- Empty state with branded illustration
+- Book deletion with slide-out animation
+
+#### Book Model
+
+**Location:** `lib/models/book.dart`
+
+```dart
+class Book {
+  final String id;           // Unique identifier (timestamp-based)
+  final String title;        // Book title
+  final String author;       // Author name
+  final String? coverUrl;    // Optional cover URL (future use)
+  final DateTime createdAt;  // Creation timestamp
+  final List<WordEntry> words; // Associated word entries
+  
+  // Helper methods
+  Book addWord(WordEntry word);
+  Book removeWord(String wordId);
+  Book updateWord(WordEntry updatedWord);
+  int get wordCount;
+  bool get hasWords;
+  
+  // Serialization
+  Map<String, dynamic> toJson();
+  factory Book.fromJson(Map<String, dynamic> json);
+}
+```
+
+#### Library Screen
+
+**Location:** `lib/screens/library_screen.dart`
+
+| Component | Description |
+|-----------|-------------|
+| App Bar | Title "Library" + theme toggle button |
+| Book Grid | 2-column grid of BookCards |
+| Empty State | Illustration + "Add a Book" CTA |
+| FAB | Floating "+" button to add books |
+
+#### Add Book Screen
+
+**Location:** `lib/screens/add_book_screen.dart`
+
+| Field | Validation |
+|-------|------------|
+| Title | Required, max 100 characters |
+| Author | Required, defaults to "Unknown Author" |
+
+```dart
+// Creating a new book
+final book = Book(
+  id: DateTime.now().millisecondsSinceEpoch.toString(),
+  title: 'The Brothers Karamazov',
+  author: 'Fyodor Dostoevsky',
+);
+```
+
+### 2.2 Contextual Word Explanations
+
+The core feature that differentiates Contexta from traditional dictionaries.
+
+#### Perplexity API Integration
+
+**Location:** `lib/services/perplexity_service.dart`
+
+```dart
+class PerplexityService {
+  /// Explain a word with book context
+  Future<WordExplanationResult> explainWord({
+    required String word,
+    required String bookTitle,
+    required String bookAuthor,
+  });
+}
+```
+
+#### API Configuration
+
+**Location:** `lib/config/api_config.dart`
+
+| Setting | Value | Description |
+|---------|-------|-------------|
+| Model | `sonar` | Perplexity's fast model |
+| Max Tokens | 300 | Response length limit |
+| Temperature | 0.3 | Focused, less creative |
+| Timeout | 30 seconds | Request timeout |
+
+#### System Prompt
+
+The AI is instructed to respond in a specific format:
+
+```
+[4-5 word short definition in plain text]
+---
+[Detailed contextual explanation in 2-3 sentences explaining 
+the word's significance in the context of the book or literary 
+genre, using sophisticated but accessible language.]
+```
+
+#### Environment Setup
+
+Create `.env` file in project root:
+
+```env
+PERPLEXITY_API_KEY=your_api_key_here
+```
+
+Get your API key from: https://www.perplexity.ai/settings/api
+
+### 2.3 Word Collection Management
+
+Each book maintains its own vocabulary collection.
+
+#### Word Entry Model
+
+**Location:** `lib/models/word_entry.dart`
+
+```dart
+class WordEntry {
+  final String id;           // Unique identifier
+  final String word;         // The captured word
+  final String explanation;  // AI-generated explanation
+  final String bookId;       // Parent book reference
+  final DateTime timestamp;  // When word was added
+  
+  // Helper methods
+  String get relativeTime;      // "2h ago", "3d ago"
+  String get formattedDate;     // "30/01/2026"
+  String get capitalizedWord;   // First letter uppercase
+  
+  // Serialization
+  Map<String, dynamic> toJson();
+  factory WordEntry.fromJson(Map<String, dynamic> json);
+}
+```
+
+#### Word Collection Features
+
+| Feature | Description |
+|---------|-------------|
+| Add Word | Enter word, tap "Explain", automatically saved |
+| View Details | Tap word to see full explanation in bottom sheet |
+| Edit Word | Modify word text and refetch explanation |
+| Remove Word | Delete with haptic feedback confirmation |
+| Sort Options | Recent, Oldest, A-Z, Z-A |
+
+#### Sorting Implementation
+
+```dart
+enum SortOption {
+  recent('Recently Added'),
+  oldest('Oldest First'),
+  alphabetical('A–Z'),
+  reverseAlphabetical('Z–A');
+}
+```
+
+### 2.4 Theme System
+
+Carefully crafted light and dark themes for comfortable reading.
+
+#### Color Palette
+
+##### Light Mode
+| Token | Hex | Usage |
+|-------|-----|-------|
+| `beige` | `#F5F1E8` | Warm background |
+| `paper` | `#FFFFFF` | Cards, sheets |
+| `inkBlue` | `#1A4B7C` | Primary accent |
+| `charcoal` | `#2D2D2D` | Primary text |
+| `textSecondary` | `#6B6B6B` | Secondary text |
+| `textMuted` | `#9B9B9B` | Muted text |
+| `border` | `#D4CFC0` | Dividers |
+| `error` | `#B54B4B` | Error states |
+| `success` | `#4B8B5E` | Success states |
+
+##### Dark Mode
+| Token | Hex | Usage |
+|-------|-----|-------|
+| `darkBackground` | `#1E1B18` | Deep brown-black |
+| `darkPaper` | `#2A2520` | Dark parchment |
+| `darkPaperElevated` | `#332E28` | Elevated surfaces |
+| `darkTextPrimary` | `#EDE6D8` | Warm off-white text |
+| `darkTextSecondary` | `#B5AD9E` | Muted taupe |
+| `darkInkBlue` | `#7B8AB5` | Accent (brighter) |
+| `darkBorder` | `#3D3832` | Dividers |
+
+#### Theme Toggle
+
+```dart
+// In main.dart
+void _toggleTheme() {
+  setState(() {
+    _themeMode = _themeMode == ThemeMode.dark 
+        ? ThemeMode.light 
+        : ThemeMode.dark;
+  });
+  _storage.saveThemeMode(_themeMode == ThemeMode.dark ? 'dark' : 'light');
+}
+```
+
+### 2.5 Design System & UI Components
+
+#### Typography
+
+| Style | Font | Size | Weight | Usage |
+|-------|------|------|--------|-------|
+| Display | Georgia (Serif) | 28px | 500 | Screen titles |
+| Headline | Georgia (Serif) | 24px | 500 | Section headers |
+| Title | Georgia (Serif) | 20px | 500 | Card titles |
+| Body | Inter | 16px | 400 | Main content |
+| Caption | Inter | 14px | 400 | Secondary info |
+| Button | Inter | 15px | 500 | Button labels |
+
+#### Border Radius Scale
+
+| Token | Value | Usage |
+|-------|-------|-------|
+| `radiusSmall` | 8px | Buttons, inputs |
+| `radiusMedium` | 16px | Cards |
+| `radiusLarge` | 20px | Larger cards |
+| `radiusXLarge` | 24px | Pills, FAB |
+| `radiusSheet` | 28px | Bottom sheets |
+
+#### Animation System
+
+| Animation | Duration | Curve | Usage |
+|-----------|----------|-------|-------|
+| Fade In | 700ms | easeOut | Screen transitions |
+| Button Press | 120ms | easeOut | Tap feedback |
+| Card Press | 200ms | easeOut | Card interactions |
+| Sheet Enter | 200ms | easeOut | Bottom sheets |
+| Dialog | 200ms | easeOut | Dialogs |
+| Theme Transition | 300ms | easeOut | Theme changes |
+
+#### Scale Values
+
+| Token | Value | Usage |
+|-------|-------|-------|
+| `buttonPressedScale` | 0.97 | Button press effect |
+| `cardPressedScale` | 0.98 | Card press effect |
+| `cardHoverScale` | 1.01 | Card hover (desktop) |
+| `fabPressedScale` | 0.95 | FAB press effect |
+
+#### Widget Library
+
+| Widget | Location | Description |
+|--------|----------|-------------|
+| `BookCard` | `widgets/book_card.dart` | Stacked paper effect card with animations |
+| `ContextaAppBar` | `widgets/contexta_app_bar.dart` | Custom app bar with back button |
+| `ContextaBottomSheet` | `widgets/contexta_bottom_sheet.dart` | Styled modal bottom sheet |
+| `ContextaDialog` | `widgets/contexta_dialog.dart` | Confirmation dialogs |
+| `ContextaTextField` | `widgets/contexta_text_field.dart` | Styled text input |
+| `LoadingDots` | `widgets/loading_dots.dart` | Animated loading indicator |
+| `Logo` | `widgets/logo.dart` | Brand logo with CustomPaint |
+| `PrimaryButton` | `widgets/primary_button.dart` | Primary CTA button |
+| `SecondaryButton` | `widgets/secondary_button.dart` | Secondary action button |
+| `WordExplanationSheet` | `widgets/word_explanation_sheet.dart` | Word detail modal |
+| `WordListItem` | `widgets/word_list_item.dart` | Word collection list item |
+
+#### Logo Design
+
+The Contexta logo combines three elements built with `CustomPaint`:
+
+1. **Page corner fold** (top-right) - Represents reading
+2. **C-shaped bracket** - Annotation/marginalia symbol
+3. **Margin line** (left) - Scholarly annotation style
+
+```dart
+class ContextaLogo extends StatelessWidget {
+  final double size;
+  final Color? color;
+  final bool animated; // Fade-in animation on splash
+}
+```
+
+#### Storage Service
+
+**Location:** `lib/services/storage_service.dart`
+
+Handles all local persistence using SharedPreferences.
+
+```dart
+class StorageService {
+  // Books
+  Future<bool> saveBooks(List<Book> books);
+  Future<List<Book>> loadBooks();
+  Future<bool> addBook(Book book, List<Book> currentBooks);
+  Future<bool> removeBook(String bookId, List<Book> currentBooks);
+  Future<bool> updateBook(Book book, List<Book> currentBooks);
+  
+  // Theme
+  Future<bool> saveThemeMode(String mode);
+  String? loadThemeMode();
+  
+  // First Launch
+  bool get isFirstLaunch;
+  Future<bool> markAsLaunched();
+}
+```
+
+---
+
+## 3. Offline-First Word Explanations (v1.1.0)
+
+*Commit: `0da2604` - feat: Add offline-first word explanations with SQLite caching*
+
+### 3.1 Overview
 
 The offline-first architecture ensures that users can access word explanations even without an internet connection. All API responses are cached locally in a SQLite database, providing instant access to previously looked-up words.
 
@@ -38,7 +394,7 @@ The offline-first architecture ensures that users can access word explanations e
 - ✅ Reduced API costs through intelligent caching
 - ✅ Improved user experience with faster load times
 
-### 1.2 Architecture
+### 3.2 Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
@@ -138,7 +494,7 @@ CREATE INDEX idx_cache_expires ON word_explanation_cache (expires_at);
 CREATE INDEX idx_cache_lru ON word_explanation_cache (last_accessed_at);
 ```
 
-### 1.4 Services
+### 3.4 Services
 
 #### DatabaseService
 **Location:** `lib/services/database/database_service.dart`
@@ -233,7 +589,7 @@ connectivity.statusStream.listen((status) {
 });
 ```
 
-### 1.5 Usage
+### 3.5 Usage
 
 #### Basic Word Explanation Flow
 
@@ -264,7 +620,7 @@ final result = await perplexityService.explainWord(
 );
 ```
 
-### 1.6 Configuration
+### 3.6 Configuration
 
 #### Cache Settings
 Located in `WordExplanationCacheService`:
@@ -283,9 +639,11 @@ static const int _databaseVersion = 1; // Increment for schema changes
 
 ---
 
-## 2. Context-Aware Rephrasing Levels
+## 4. Context-Aware Rephrasing Levels (v1.1.0)
 
-### 2.1 Overview
+*Commit: `a9b810a` - feat: Add context-aware rephrasing levels*
+
+### 4.1 Overview
 
 The rephrasing levels feature allows users to customize the depth of word explanations based on their reading goals. Three levels are available, each with tailored AI prompts.
 
@@ -295,7 +653,7 @@ The rephrasing levels feature allows users to customize the depth of word explan
 - ✅ Rich context for literary analysis (Deep)
 - ✅ Persistent user preference
 
-### 2.2 Explanation Levels
+### 4.2 Explanation Levels
 
 #### Simple (◯)
 **Use Case:** Quick reference, casual reading
@@ -359,7 +717,7 @@ Often confused with "ethereal"; ephemeral emphasizes brevity of duration
 rather than delicacy of substance.
 ```
 
-### 2.3 UI Components
+### 4.3 UI Components
 
 #### ExplanationLevelSelector
 **Location:** `lib/widgets/explanation_level_selector.dart`
@@ -394,7 +752,7 @@ ExplanationLevelSelectorCompact(
 )
 ```
 
-### 2.4 Integration
+### 4.4 Integration
 
 #### In BookDetailScreen
 
@@ -445,7 +803,7 @@ final cacheKey = '${word.toLowerCase()}_${level.name}';
 // "ephemeral_deep"
 ```
 
-### 2.5 Customization
+### 4.5 Customization
 
 #### Adding a New Level
 
@@ -509,7 +867,7 @@ decoration: BoxDecoration(
 
 ---
 
-## 3. API Reference
+## 5. API Reference
 
 ### PerplexityService
 
@@ -566,7 +924,123 @@ ExplanationLevel loadExplanationLevel();
 
 ---
 
-## 4. Troubleshooting
+## 6. Project Architecture
+
+### High-Level Architecture
+
+```
+┌────────────────────────────────────────────────────────────────┐
+│                         PRESENTATION                            │
+│  ┌──────────────┐ ┌──────────────┐ ┌──────────────────────────┐ │
+│  │ SplashScreen │ │ LibraryScreen│ │ BookDetailScreen          │ │
+│  └──────────────┘ └──────────────┘ └──────────────────────────┘ │
+│  ┌──────────────┐                                               │
+│  │ AddBookScreen│                                               │
+│  └──────────────┘                                               │
+├────────────────────────────────────────────────────────────────┤
+│                          WIDGETS                                │
+│  ┌────────────┐ ┌───────────────┐ ┌─────────────────────────┐  │
+│  │  BookCard  │ │ WordListItem  │ │ ExplanationLevelSelector │  │
+│  └────────────┘ └───────────────┘ └─────────────────────────┘  │
+│  ┌────────────┐ ┌───────────────┐ ┌──────────────────────────┐ │
+│  │LoadingDots │ │PrimaryButton  │ │WordExplanationSheet      │ │
+│  └────────────┘ └───────────────┘ └──────────────────────────┘ │
+├────────────────────────────────────────────────────────────────┤
+│                         SERVICES                                │
+│  ┌───────────────────┐ ┌───────────────────────────────────┐   │
+│  │  PerplexityService│ │ WordExplanationCacheService       │   │
+│  └───────────────────┘ └───────────────────────────────────┘   │
+│  ┌───────────────────┐ ┌───────────────────────────────────┐   │
+│  │  StorageService   │ │ ConnectivityService               │   │
+│  └───────────────────┘ └───────────────────────────────────┘   │
+│  ┌───────────────────┐                                         │
+│  │  DatabaseService  │                                         │
+│  └───────────────────┘                                         │
+├────────────────────────────────────────────────────────────────┤
+│                          DATA                                   │
+│  ┌────────────┐ ┌─────────────┐ ┌────────────────────────────┐ │
+│  │    Book    │ │  WordEntry  │ │     ExplanationLevel       │ │
+│  └────────────┘ └─────────────┘ └────────────────────────────┘ │
+├────────────────────────────────────────────────────────────────┤
+│                        PERSISTENCE                              │
+│  ┌───────────────────────────┐ ┌──────────────────────────┐    │
+│  │    SharedPreferences      │ │     SQLite Database      │    │
+│  │    (Settings, Theme)      │ │     (Cache, Books)       │    │
+│  └───────────────────────────┘ └──────────────────────────┘    │
+├────────────────────────────────────────────────────────────────┤
+│                         EXTERNAL                                │
+│  ┌───────────────────────────────────────────────────────────┐ │
+│  │                    Perplexity AI API                      │ │
+│  └───────────────────────────────────────────────────────────┘ │
+└────────────────────────────────────────────────────────────────┘
+```
+
+### Data Flow
+
+#### Word Explanation Flow
+
+```
+User enters word
+       │
+       ▼
+BookDetailScreen
+       │
+       ├──► Check selected ExplanationLevel
+       │
+       ▼
+PerplexityService.explainWord()
+       │
+       ├──► Generate cache key: "{word}_{level}"
+       │
+       ▼
+WordExplanationCacheService.getExplanation()
+       │
+       ├─── CACHE HIT ───► Return cached result
+       │
+       ├─── CACHE MISS
+       │
+       ▼
+ConnectivityService.isOnline?
+       │
+       ├─── OFFLINE ───► Return error/stale cache
+       │
+       ├─── ONLINE
+       │
+       ▼
+Perplexity API HTTP Request
+       │
+       ├──► Parse response
+       │
+       ▼
+WordExplanationCacheService.cacheExplanation()
+       │
+       ▼
+Return result to UI
+```
+
+### State Management
+
+Contexta uses a simple **lift-state-up** pattern without external state management libraries:
+
+1. **App State (`main.dart`):** Books list, theme mode, services
+2. **Screen State:** Screen-specific UI state (loading, form inputs)
+3. **Widget State:** Animation controllers, transient UI state
+
+```dart
+// App-level state in main.dart
+class _MyAppState extends State<MyApp> {
+  ThemeMode _themeMode = ThemeMode.light;
+  List<Book> _books = [];
+  final StorageService _storage = StorageService();
+  
+  // State passed down via Navigator arguments
+  // Callbacks passed up via Navigator.pop(result)
+}
+```
+
+---
+
+## 7. Troubleshooting
 
 ### Common Issues
 
@@ -658,4 +1132,203 @@ dependencies:
 
 ---
 
-*This documentation is part of the Contexta project. For questions or contributions, please refer to the project repository.*
+## 8. Changelog
+
+All notable changes to Contexta are documented here.
+
+### [1.1.0] - 2026-01-30
+
+#### Added - Offline-First Word Explanations
+*Commit: `0da2604`*
+
+- **SQLite Database Layer**
+  - DatabaseService singleton with migration support
+  - Tables: `books`, `word_entries`, `word_explanation_cache`, `sync_queue`
+  - Indexed for fast lookups
+  
+- **Word Explanation Cache Service**
+  - LRU (Least Recently Used) cache eviction
+  - 10,000 entry maximum with automatic cleanup
+  - 1-year expiration on cached entries
+  - Cache statistics tracking (hit count, last accessed)
+
+- **Connectivity Service**
+  - Real-time network status monitoring
+  - Stream-based status updates
+  - Graceful offline/online transitions
+
+- **Updated PerplexityService**
+  - Cache-first lookup strategy
+  - Automatic caching of API responses
+  - Offline fallback to cached data
+
+#### Added - Context-Aware Rephrasing Levels
+*Commit: `a9b810a`*
+
+- **ExplanationLevel Enum**
+  - `Simple` (◯): 3-4 word definitions, 150 tokens
+  - `Literary` (◐): Contextual depth, 300 tokens
+  - `Deep` (●): Etymology + analysis, 500 tokens
+
+- **ExplanationLevelSelector Widget**
+  - Animated segmented control
+  - Smooth sliding indicator
+  - Haptic feedback
+  - Dark/Light theme support
+
+- **Level Persistence**
+  - User preference saved in SharedPreferences
+  - Restored on app launch
+
+- **Level-Aware Caching**
+  - Separate cache entries per level
+  - Cache key format: `{word}_{level}`
+
+---
+
+### [1.0.1] - 2026-01-28
+
+#### Fixed
+*Commit: `0e70ec4` - fix: improve word edit keyboard handling*
+
+- Fixed keyboard handling when editing words
+- Improved focus management in BookDetailScreen
+
+---
+
+### [1.0.0] - 2026-01-27
+
+*Commit: `cdaf3e8` - Initial commit: Contexta reading companion app*
+
+#### Added - Core Application
+- **Personal Library System**
+  - Add/remove books with title and author
+  - Visual book cards with stacked paper effect
+  - Persistent storage via SharedPreferences
+  - Empty state with branded illustration
+
+- **Contextual Word Explanations**
+  - Perplexity AI integration (sonar model)
+  - Context-aware explanations based on book
+  - Short definition + detailed context format
+  - 30-second timeout handling
+
+- **Word Collection Management**
+  - Per-book word collections
+  - Add, edit, remove words
+  - Sort: Recent, Oldest, A-Z, Z-A
+  - Relative timestamps ("2h ago")
+
+- **Theme System**
+  - Light mode (warm beige aesthetic)
+  - Dark mode (deep parchment)
+  - Persistent theme preference
+  - Smooth 300ms transitions
+
+- **Design System**
+  - Georgia serif + Inter sans-serif typography
+  - Consistent border radius scale (8-28px)
+  - Animation system with defined durations
+  - Custom widget library (12 components)
+
+- **UI Components**
+  - BookCard with press/hover animations
+  - LoadingDots animated indicator
+  - ContextaLogo with CustomPaint
+  - WordExplanationSheet modal
+  - Primary/Secondary buttons
+  - Styled text fields and dialogs
+
+- **Splash Screen**
+  - Animated logo reveal
+  - 2-second display before navigation
+  - First-launch detection
+
+---
+
+## Appendix
+
+### Complete File Structure
+
+```
+lib/
+├── main.dart                         # App entry, theme management
+├── config/
+│   └── api_config.dart               # Perplexity API configuration
+├── models/
+│   ├── book.dart                     # Book data model
+│   ├── word_entry.dart               # Word entry model
+│   └── explanation_level.dart        # Explanation levels enum (v1.1.0)
+├── screens/
+│   ├── splash_screen.dart            # Animated splash
+│   ├── library_screen.dart           # Main library view
+│   ├── book_detail_screen.dart       # Word input & collection
+│   └── add_book_screen.dart          # Add book form
+├── services/
+│   ├── database/                     # Database module (v1.1.0)
+│   │   ├── database.dart             # Barrel export
+│   │   ├── database_service.dart     # SQLite operations
+│   │   └── migrations.dart           # Schema migrations
+│   ├── connectivity_service.dart     # Network status (v1.1.0)
+│   ├── perplexity_service.dart       # AI API integration
+│   ├── storage_service.dart          # SharedPreferences
+│   └── word_explanation_cache_service.dart  # LRU cache (v1.1.0)
+├── theme/
+│   └── app_theme.dart                # Design tokens, colors
+└── widgets/
+    ├── book_card.dart                # Library book cards
+    ├── contexta_app_bar.dart         # Custom app bar
+    ├── contexta_bottom_sheet.dart    # Modal sheets
+    ├── contexta_dialog.dart          # Confirmation dialogs
+    ├── contexta_text_field.dart      # Styled inputs
+    ├── explanation_level_selector.dart  # Level picker (v1.1.0)
+    ├── loading_dots.dart             # Loading indicator
+    ├── logo.dart                     # Brand logo
+    ├── primary_button.dart           # Primary CTA
+    ├── secondary_button.dart         # Secondary actions
+    ├── word_explanation_sheet.dart   # Word detail modal
+    └── word_list_item.dart           # Word list rows
+```
+
+### All Dependencies
+
+```yaml
+# pubspec.yaml - Complete list
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.8         # iOS-style icons
+  shared_preferences: ^2.2.2      # Local key-value storage
+  http: ^1.2.2                    # HTTP client for API
+  flutter_dotenv: ^5.1.0          # Environment variables
+  sqflite: ^2.4.2                 # SQLite database (v1.1.0)
+  path: ^1.9.1                    # Path utilities (v1.1.0)
+  connectivity_plus: ^6.1.4       # Network status (v1.1.0)
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0           # Lint rules
+```
+
+### Environment Setup
+
+1. Clone repository
+2. Create `.env` file in project root:
+   ```env
+   PERPLEXITY_API_KEY=pplx-xxxxxxxxxxxxxxxxxx
+   ```
+3. Run `flutter pub get`
+4. Run `flutter run`
+
+### Getting API Key
+
+1. Visit https://www.perplexity.ai/settings/api
+2. Create new API key
+3. Add to `.env` file
+
+---
+
+*This documentation covers Contexta from initial release through v1.1.0. For the latest updates, refer to the git commit history.*
+
+*Last updated: January 30, 2026*
