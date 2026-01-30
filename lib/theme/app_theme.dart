@@ -569,6 +569,13 @@ class AppTheme {
         : border.withValues(alpha: 0.5);
   }
 
+  /// Get appropriate primary text color based on brightness
+  static Color getTextPrimary(BuildContext context) {
+    return Theme.of(context).brightness == Brightness.dark
+        ? darkTextPrimary
+        : charcoal;
+  }
+
   /// Get appropriate muted text color based on brightness
   static Color getTextMuted(BuildContext context) {
     return Theme.of(context).brightness == Brightness.dark

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../models/book.dart';
 import '../models/word_entry.dart';
 import '../theme/app_theme.dart';
@@ -13,14 +14,15 @@ import '../widgets/word_explanation_sheet.dart';
 import '../widgets/export_options_sheet.dart';
 import '../widgets/reading_streak_indicator.dart';
 import '../widgets/settings_sheet.dart';
-import 'add_book_screen.dart';
+import '../widgets/shelf_overlay.dart';
+import '../widgets/add_book_panel.dart';
 import 'book_detail_screen.dart';
 
 /// Current view state for the library screen
-enum LibraryView { library, add, detail }
+enum LibraryView { library, detail }
 
 /// Library screen - main dashboard for book management
-/// Features: Book list, FAB with glow effect, delete confirmation, dark mode toggle
+/// Features: Book list, shelf animation for adding books, delete confirmation
 class LibraryScreen extends StatefulWidget {
   final List<Book> books;
   final VoidCallback onToggleTheme;
@@ -48,10 +50,22 @@ class LibraryScreen extends StatefulWidget {
 }
 
 class _LibraryScreenState extends State<LibraryScreen>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   LibraryView _view = LibraryView.library;
   Book? _selectedBook;
   WordEntry? _pendingWordToShow;
+
+  // Shelf controller for add book animation
+  late ShelfController _shelfController;
+  final GlobalKey<ShelfOverlayState> _shelfOverlayKey = GlobalKey();
+
+  // For newly added book highlight
+  String? _newlyAddedBookId;
+  late AnimationController _highlightController;
+  late Animation<double> _highlightAnimation;
+
+  // Scroll controller for auto-scroll to new book
+  final ScrollController _scrollController = ScrollController();
 
   // FAB animation
   late AnimationController _fabController;
@@ -61,6 +75,10 @@ class _LibraryScreenState extends State<LibraryScreen>
   void initState() {
     super.initState();
 
+    // Initialize shelf controller
+    _shelfController = ShelfController();
+
+    // FAB animation
     _fabController = AnimationController(
       vsync: this,
       duration: AppTheme.buttonPressDuration,
@@ -70,11 +88,38 @@ class _LibraryScreenState extends State<LibraryScreen>
       begin: 1.0,
       end: 0.95,
     ).animate(CurvedAnimation(parent: _fabController, curve: Curves.easeOut));
+
+    // Highlight animation for newly added book
+    _highlightController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1000),
+    );
+
+    _highlightAnimation = TweenSequence<double>([
+      TweenSequenceItem(
+        tween: Tween(
+          begin: 0.0,
+          end: 1.0,
+        ).chain(CurveTween(curve: Curves.easeOut)),
+        weight: 25, // 250ms fade in
+      ),
+      TweenSequenceItem(tween: ConstantTween(1.0), weight: 35), // 350ms hold
+      TweenSequenceItem(
+        tween: Tween(
+          begin: 1.0,
+          end: 0.0,
+        ).chain(CurveTween(curve: Curves.easeIn)),
+        weight: 40, // 400ms fade out
+      ),
+    ]).animate(_highlightController);
   }
 
   @override
   void dispose() {
+    _shelfController.dispose();
     _fabController.dispose();
+    _highlightController.dispose();
+    _scrollController.dispose();
     super.dispose();
   }
 
@@ -164,19 +209,65 @@ class _LibraryScreenState extends State<LibraryScreen>
     );
   }
 
+  /// Handle book placement from shelf
+  void _handleBookPlacement(
+    String title,
+    String author,
+    Offset cardPosition,
+    Size cardSize,
+  ) {
+    // Start the flying book animation
+    _shelfOverlayKey.currentState?.startBookPlacement(
+      title: title,
+      author: author,
+      startPosition: cardPosition,
+      bookSize: cardSize,
+    );
+  }
+
+  /// Called when book placement animation completes
+  void _onPlacementComplete(String title, String author) {
+    // Add the book
+    widget.onAddBook(title, author);
+
+    // Find the newly added book (it will be at the end or beginning of the list)
+    // We'll highlight it after the next frame
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && widget.books.isNotEmpty) {
+        // The new book is typically the last one added
+        final newBook = widget.books.last;
+        setState(() {
+          _newlyAddedBookId = newBook.id;
+        });
+
+        // Start highlight animation
+        _highlightController.forward(from: 0).then((_) {
+          if (mounted) {
+            setState(() {
+              _newlyAddedBookId = null;
+            });
+          }
+        });
+
+        // Scroll to the new book if needed
+        if (_scrollController.hasClients) {
+          final index = widget.books.indexWhere((b) => b.id == newBook.id);
+          if (index >= 0) {
+            // Estimate scroll position (each card ~120px + 16px padding)
+            final targetOffset = index * 136.0;
+            _scrollController.animateTo(
+              targetOffset.clamp(0, _scrollController.position.maxScrollExtent),
+              duration: const Duration(milliseconds: 300),
+              curve: Curves.easeOut,
+            );
+          }
+        }
+      }
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
-    // Handle different views
-    if (_view == LibraryView.add) {
-      return AddBookScreen(
-        onBack: () => setState(() => _view = LibraryView.library),
-        onSave: (title, author) {
-          widget.onAddBook(title, author);
-          setState(() => _view = LibraryView.library);
-        },
-      );
-    }
-
     if (_view == LibraryView.detail && _selectedBook != null) {
       // Find the current version of the book from the list
       final currentBook = widget.books.firstWhere(
@@ -213,18 +304,33 @@ class _LibraryScreenState extends State<LibraryScreen>
     // Calculate if any book has words for showing search
     final hasAnyWords = widget.books.any((b) => b.hasWords);
 
-    // Library view
-    return Scaffold(
-      appBar: ContextaAppBar(
-        title: 'My Shelf',
-        showBackButton: false,
-        rightAction: _SettingsButton(onTap: _showSettings),
+    // Library view with shelf overlay
+    return ShelfOverlay(
+      key: _shelfOverlayKey,
+      controller: _shelfController,
+      addBookBuilder:
+          (context, onClose) => AddBookPanel(
+            onClose: onClose,
+            onPlaceOnShelf: (title, author, position, size) {
+              _handleBookPlacement(title, author, position, size);
+              // Schedule completion callback
+              Future.delayed(const Duration(milliseconds: 500), () {
+                _onPlacementComplete(title, author);
+              });
+            },
+          ),
+      child: Scaffold(
+        appBar: ContextaAppBar(
+          title: 'My Shelf',
+          showBackButton: false,
+          rightAction: _SettingsButton(onTap: _showSettings),
+        ),
+        floatingActionButton: _buildFAB(context),
+        body:
+            widget.books.isEmpty
+                ? _buildEmptyState(context)
+                : _buildBookListWithSearch(hasAnyWords),
       ),
-      floatingActionButton: _buildFAB(context),
-      body:
-          widget.books.isEmpty
-              ? _buildEmptyState(context)
-              : _buildBookListWithSearch(hasAnyWords),
     );
   }
 
@@ -264,7 +370,11 @@ class _LibraryScreenState extends State<LibraryScreen>
       onTapCancel: () {
         _fabController.reverse();
       },
-      onTap: () => setState(() => _view = LibraryView.add),
+      onTap: () {
+        // Open the shelf with haptic feedback
+        HapticFeedback.lightImpact();
+        _shelfController.open();
+      },
       child: AnimatedBuilder(
         animation: _fabScaleAnimation,
         builder: (context, child) {
@@ -350,11 +460,14 @@ class _LibraryScreenState extends State<LibraryScreen>
 
             const SizedBox(height: 32),
 
-            // Add book button
+            // Add book button - opens shelf
             PrimaryButton(
               label: 'Add a Book to Your Shelf',
               icon: Icons.add,
-              onPressed: () => setState(() => _view = LibraryView.add),
+              onPressed: () {
+                HapticFeedback.lightImpact();
+                _shelfController.open();
+              },
             ),
           ],
         ),
@@ -364,19 +477,46 @@ class _LibraryScreenState extends State<LibraryScreen>
 
   Widget _buildBookList() {
     return ListView.builder(
+      controller: _scrollController,
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
       itemCount: widget.books.length,
       itemBuilder: (context, index) {
         final book = widget.books[index];
+        final isNewlyAdded = book.id == _newlyAddedBookId;
+
         return Padding(
           key: ValueKey(book.id),
           padding: const EdgeInsets.only(bottom: 16),
-          child: BookCard(
-            key: ValueKey('book_card_${book.id}'),
-            book: book,
-            onTap: () => _openBook(book),
-            onDelete: () => _confirmDelete(book),
-            onRemoved: () => _removeBook(book),
+          child: AnimatedBuilder(
+            animation: _highlightAnimation,
+            builder: (context, child) {
+              if (!isNewlyAdded) return child!;
+
+              // Highlight effect for newly added book - more visible
+              final highlightOpacity = _highlightAnimation.value * 0.25;
+              return Container(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(AppTheme.radiusLarge + 4),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.primary.withValues(alpha: highlightOpacity),
+                      blurRadius: 20,
+                      spreadRadius: 6,
+                    ),
+                  ],
+                ),
+                child: child,
+              );
+            },
+            child: BookCard(
+              key: ValueKey('book_card_${book.id}'),
+              book: book,
+              onTap: () => _openBook(book),
+              onDelete: () => _confirmDelete(book),
+              onRemoved: () => _removeBook(book),
+            ),
           ),
         );
       },

@@ -1,6 +1,6 @@
 # Contexta - Complete Feature Documentation
 
-> **Version:** 1.8.0  
+> **Version:** 1.9.0  
 > **Last Updated:** January 30, 2026  
 > **Authors:** Development Team  
 > **Repository:** github.com/jiteshh-10/Contexta
@@ -72,10 +72,17 @@
     - [Shadow Strategy](#114-shadow-strategy)
     - [Helper Methods](#115-helper-methods)
     - [Updated Components](#116-updated-components)
-12. [API Reference](#12-api-reference)
-13. [Project Architecture](#13-project-architecture)
-14. [Troubleshooting](#14-troubleshooting)
-15. [Changelog](#15-changelog)
+12. [Shelf Interaction (v1.9.0)](#12-shelf-interaction-v190)
+    - [Overview](#121-overview)
+    - [Core Concept](#122-core-concept)
+    - [Animation System](#123-animation-system)
+    - [Components](#124-components)
+    - [User Journey](#125-user-journey)
+    - [Technical Details](#126-technical-details)
+13. [API Reference](#13-api-reference)
+14. [Project Architecture](#14-project-architecture)
+15. [Troubleshooting](#15-troubleshooting)
+16. [Changelog](#16-changelog)
 
 ---
 
@@ -2608,7 +2615,297 @@ This is **polish** — making what exists feel premium.
 
 ---
 
-## 12. API Reference
+## 12. Shelf Interaction (v1.9.0)
+
+### 12.1 Overview
+
+**"The shelf opens to receive a book."**
+
+This feature transforms adding books from a utilitarian screen transition into a spatial, intentional ritual. The add-book flow is now anchored as a **persistent spatial element** (the shelf) that expands from the top of the library, revealing form content below it. When users place a book, it flies from the form up to the shelf with a settle animation, then appears in the library list.
+
+**Goals:**
+- Turn book addition from transaction into ritual
+- Create spatial continuity (shelf is a place, not a screen)
+- One signature animation that feels premium and restrained
+- Differentiate Contexta through micro-interactions
+
+### 12.2 Core Concept
+
+#### The Shelf Is Spatial
+
+The shelf is not a modal, route, or overlay. It is a **persistent conceptual element** at the top-left of the interface, always present in the user's mental model.
+
+- When closed: Invisible, just an idea
+- When open: Expands downward, revealing form content
+- The form lives "underneath" the shelf
+
+#### User Mental Model
+
+> "I'm preparing a book at the shelf to place it in my library."
+
+Not: "I'm filling out a form"
+Not: "I'm navigating to add screen"
+**Yes:** "The shelf opened to receive my book"
+
+### 12.3 Animation System
+
+#### Shelf Opening (220ms)
+
+**Timing:** 220ms, `Curves.easeOutCubic`
+**What moves:** Shelf expands downward from origin
+**Content reveal:** 80ms delay, fades in (duration 140ms)
+**Background:** Dims by 5-8% in parallel
+**Feel:** Slow, confident, deliberate
+
+```
+0ms ─ Shelf begins expanding
+80ms ─ Content begins fading in
+220ms ─ Both animations complete
+```
+
+**Haptics:**
+- FAB press: `lightImpact()`
+- Shelf completion: Silent (the dim overlay is feedback)
+
+#### Book Placement (480ms)
+
+**Timing:** 480ms, `Curves.easeOutCubic` (deceleration at end)
+**Start position:** Preview card location in the form
+**End position:** Library list, top with slight offset
+**Trajectory:** Slightly diagonal, with subtle arc (−20px peak at 50% progress)
+**Scale:** Lift (1.02) → Travel (0.98) → Settle (1.0)
+**Elevation:** Shadow follows book, peaks at 8px, settles at 2px
+
+**Haptics:**
+- Placement start: `lightImpact()`
+- Book lands: `selectionClick()` (settle feel)
+
+#### Shelf Closing (220ms)
+
+**Timing:** 220ms, `Curves.easeOutCubic`
+**What moves:** Shelf contracts upward
+**What fades:** Content fades with shelf
+**Background:** Dim overlay fades
+**Trigger:** Automatic after book settles, or user taps dim overlay
+**Feel:** Natural return to rest state
+
+### 12.4 Components
+
+#### ShelfController
+
+Manages all shelf animation state:
+
+```dart
+class ShelfController extends ChangeNotifier {
+  bool get isOpen;           // Shelf is expanded
+  bool get isAnimating;      // Currently animating
+  bool get isPlacingBook;    // Book in flight
+  
+  void open();               // Start opening
+  void close();              // Start closing
+  void startPlacingBook();   // Begin placement
+  void finishPlacingBook();  // Book landed
+  void onAnimationComplete();// Called by AnimationController
+}
+```
+
+#### ShelfOverlay
+
+Parent widget that wraps the library screen with shelf functionality:
+
+**Responsibilities:**
+- Manages all animation controllers (shelf expansion, book placement)
+- Renders dim overlay when open
+- Renders shelf content below library
+- Renders flying book during placement
+- Calculates book trajectory and position
+
+**Key Properties:**
+- `controller`: ShelfController for state management
+- `addBookBuilder`: Widget builder for form content
+- `child`: The library screen (books list, FAB, etc.)
+
+#### AddBookPanel
+
+The form that appears when shelf expands:
+
+**Content:**
+- Header: "Add a Book" with close button
+- Title field (required) with real-time validation
+- Author field (optional)
+- Book preview card (appears as user types title)
+- "Place on Shelf" button
+
+**Real-time Preview:**
+- Appears when title is not empty
+- Fade + scale animation (200ms)
+- Shows book card matching library style
+- Displays: Title, Author, "0 words" stat
+- North arrow icon hints at upward placement
+
+**Preview Card Position:**
+- GlobalKey cached to get exact position during flight
+- Position used as start point for placement animation
+
+### 12.5 User Journey
+
+#### 1. Library View (Idle)
+
+User sees book list, FAB visible. Everything is still.
+
+#### 2. FAB Tap
+
+- FAB scales down (0.95, 100ms) with haptic
+- Shelf controller receives `open()` signal
+- Background dims (5-8%)
+- Shelf expands downward (220ms)
+- Form content fades in (80ms delay, 140ms duration)
+
+#### 3. User Enters Book Info
+
+- Title field auto-focused
+- Author field optional
+- As user types title:
+  - Preview card appears with fade + scale
+  - Shows title, author, word count (0)
+  - Updates in real-time
+
+#### 4. Place on Shelf Tap
+
+- Preview card fetches its position via GlobalKey
+- Button disables during animation
+- Book card scales up slightly (lift phase)
+- Book travels from form to list (480ms)
+  - Diagonal trajectory with subtle arc
+  - Shadow follows elevation
+  - Scale: 1.02 (lift) → 0.98 (travel) → 1.0 (settle)
+
+#### 5. Book Lands
+
+- Haptic feedback (settle click)
+- Book appears in library list
+- List auto-scrolls to show new book
+- New book highlighted with soft glow (300ms)
+- Shelf automatically closes (220ms)
+- Background returns to normal
+- List is now focused, ready for interaction
+
+#### 6. Back to Library
+
+User sees new book in the list, highlight fades. Continuity preserved — the book is already there.
+
+### 12.6 Technical Details
+
+#### Animation Architecture
+
+All animations use **AnimationController** with **TickerProvider**:
+
+```dart
+// Shelf expansion
+_shelfController = AnimationController(
+  vsync: this,
+  duration: const Duration(milliseconds: 220),
+);
+
+// Book placement
+_bookPlacementController = AnimationController(
+  vsync: this,
+  duration: const Duration(milliseconds: 480),
+);
+```
+
+#### Position Calculation
+
+Book start position obtained from GlobalKey during build:
+
+```dart
+final RenderBox cardBox = 
+  _previewCardKey.currentContext?.findRenderObject() as RenderBox;
+final position = cardBox.localToGlobal(Offset.zero);
+final size = cardBox.size;
+```
+
+End position calculated as library list top with padding:
+
+```dart
+final appBarHeight = kToolbarHeight + MediaQuery.of(context).padding.top;
+_bookEndPosition = Offset(16, appBarHeight + 16);
+```
+
+#### Arc Trajectory
+
+Subtle upward arc at midpoint of flight:
+
+```dart
+final arcOffset = -20 * (1 - (2 * progress - 1) * (2 * progress - 1));
+final currentY = baseY + arcOffset;
+```
+
+This creates a gentle curve without feeling bouncy.
+
+#### Scale Phases
+
+Three distinct scaling phases during flight:
+
+1. **Lift (0-10%):** Scale 1.0 → 1.02 (user intent confirmed)
+2. **Travel (10-90%):** Scale 1.02 → 0.98 (tightens for flight)
+3. **Settle (90-100%):** Scale 0.98 → 1.0 (lands gently)
+
+#### Highlight Animation
+
+New book highlighted with TweenSequence:
+
+```dart
+TweenSequence<double>([
+  TweenSequenceItem(tween: ConstantTween(0.0), weight: 36), // Delay
+  TweenSequenceItem(tween: Tween(0.0 → 1.0), weight: 64),   // Fade in
+  TweenSequenceItem(tween: Tween(1.0 → 0.0), weight: 40),   // Fade out
+]).animate(_highlightController);
+```
+
+Total duration: 1200ms, creating a subtle glow that appears then fades.
+
+### 12.7 Performance & Stability
+
+**No Complex Rendering:**
+- Standard compositing (no custom paint)
+- Uses `Transform.scale`, `Opacity`, `Positioned`
+- No physics engines or complex curves
+
+**Hardware Acceleration:**
+- GPU-accelerated transforms
+- No JavaScript/Shader code
+- 60fps on mid-range devices
+
+**Memory:**
+- Controllers disposed properly
+- No leaks in animation callbacks
+- StreamBuilder pattern avoided for simplicity
+
+### 12.8 Failure Modes Avoided
+
+✅ Shelf appears smoothly (not abrupt)
+✅ Book travels (not teleports)
+✅ No bounce or overshoot
+✅ No loud sounds
+✅ No long delays
+✅ Motion feels inevitable (not playful)
+
+The entire experience should feel **premium, intentional, and restrained**.
+
+### 12.9 What This Feature Is NOT
+
+❌ Not drag-and-drop
+❌ Not physics-based animation
+❌ Not customizable animations
+❌ Not modal-based (shelf is spatial, not modal)
+❌ Not adding book validation (existing validation stays)
+
+This is **ritual** — turning transaction into moment.
+
+---
+
+## 13. API Reference
 
 ### PerplexityService
 
@@ -2665,7 +2962,7 @@ ExplanationLevel loadExplanationLevel();
 
 ---
 
-## 13. Project Architecture
+## 14. Project Architecture
 
 ### High-Level Architecture
 
@@ -2781,7 +3078,7 @@ class _MyAppState extends State<MyApp> {
 
 ---
 
-## 14. Troubleshooting
+## 15. Troubleshooting
 
 ### Common Issues
 
@@ -2946,9 +3243,63 @@ dependencies:
 
 ---
 
-## 15. Changelog
+## 16. Changelog
 
 All notable changes to Contexta are documented here.
+
+### [1.9.0] - 2026-01-30
+
+#### Feature - Shelf Interaction (Book Addition Ritual)
+*Commit: feat: Add shelf animation for premium book placement ritual*
+
+- **ShelfController**
+  - State management for shelf open/close/placing states
+  - Extends ChangeNotifier for reactive updates
+  - Handles animation completion callbacks
+
+- **ShelfOverlay Widget**
+  - Parent wrapper for library screen
+  - Manages shelf expansion animation (220ms)
+  - Manages book placement animation (480ms)
+  - Renders dim overlay (5-8% alpha)
+  - Renders flying book during placement
+  - Position calculation using GlobalKey
+
+- **AddBookPanel Widget**
+  - New form panel that appears when shelf expands
+  - Real-time book preview card with fade/scale animation
+  - Title (required) and Author (optional) fields
+  - "Place on Shelf" button
+  - Auto-scroll to book after placement
+
+- **Animation Details**
+  - Shelf opening: 220ms easeOutCubic (content fades 80ms delayed)
+  - Book placement: 480ms easeOutCubic with:
+    - Lift phase (1.0 → 1.02)
+    - Travel phase (1.02 → 0.98) with subtle arc
+    - Settle phase (0.98 → 1.0)
+  - Shelf closing: 220ms easeOutCubic
+  - New book highlight: 1200ms glow (appear, hold, fade)
+
+- **Haptic Feedback**
+  - FAB press: `lightImpact()`
+  - Book placement intent: `lightImpact()`
+  - Book lands: `selectionClick()`
+
+- **UX Enhancements**
+  - No route transition (spatial overlay)
+  - Auto-scroll to new book
+  - Soft highlight on newly added book
+  - Dim overlay closes shelf when tapped
+  - Empty state button also opens shelf
+
+- **Architecture**
+  - Removed AddBookScreen route navigation
+  - Integrated shelf expansion as persistent spatial element
+  - Library screen now manages all shelf state
+  - Position-independent animation (works on all screen sizes)
+
+---
 
 ### [1.8.0] - 2026-01-30
 
