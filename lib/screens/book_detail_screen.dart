@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../models/book.dart';
 import '../models/word_entry.dart';
+import '../models/explanation_level.dart';
 import '../theme/app_theme.dart';
 import '../widgets/contexta_app_bar.dart';
 import '../widgets/contexta_text_field.dart';
@@ -10,7 +11,9 @@ import '../widgets/word_list_item.dart';
 import '../widgets/word_explanation_sheet.dart';
 import '../widgets/loading_dots.dart';
 import '../widgets/contexta_bottom_sheet.dart';
+import '../widgets/explanation_level_selector.dart';
 import '../services/perplexity_service.dart';
+import '../services/storage_service.dart';
 
 /// Sort options for word collection
 enum SortOption {
@@ -45,10 +48,34 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
   final TextEditingController _wordController = TextEditingController();
   final FocusNode _wordFocusNode = FocusNode();
   final PerplexityService _perplexityService = PerplexityService();
+  final StorageService _storageService = StorageService();
 
   bool _isLoading = false;
   String? _errorMessage;
   SortOption _sortOption = SortOption.recent;
+  ExplanationLevel _explanationLevel = ExplanationLevel.simple;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadExplanationLevel();
+  }
+
+  /// Load saved explanation level preference
+  void _loadExplanationLevel() {
+    final savedLevel = _storageService.loadExplanationLevel();
+    setState(() {
+      _explanationLevel = savedLevel;
+    });
+  }
+
+  /// Update explanation level and save preference
+  void _setExplanationLevel(ExplanationLevel level) {
+    setState(() {
+      _explanationLevel = level;
+    });
+    _storageService.saveExplanationLevel(level);
+  }
 
   @override
   void dispose() {
@@ -97,11 +124,12 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
     // Haptic feedback
     HapticFeedback.lightImpact();
 
-    // Call Perplexity API for contextual explanation
+    // Call Perplexity API for contextual explanation with selected level
     final result = await _perplexityService.explainWord(
       word: word,
       bookTitle: widget.book.title,
       bookAuthor: widget.book.author,
+      level: _explanationLevel,
     );
 
     if (!mounted) return;
@@ -267,6 +295,7 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
       word: word,
       bookTitle: widget.book.title,
       bookAuthor: widget.book.author,
+      level: _explanationLevel,
     );
 
     if (result.success && result.explanation != null) {
@@ -370,6 +399,15 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
             disabled: _isLoading,
             focusNode: _wordFocusNode,
             textInputAction: TextInputAction.done,
+          ),
+
+          const SizedBox(height: 16),
+
+          // Explanation level selector
+          ExplanationLevelSelector(
+            selectedLevel: _explanationLevel,
+            onLevelChanged: _setExplanationLevel,
+            enabled: !_isLoading,
           ),
 
           const SizedBox(height: 16),

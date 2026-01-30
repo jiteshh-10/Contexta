@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../config/api_config.dart';
+import '../models/explanation_level.dart';
 import 'word_explanation_cache_service.dart';
 import 'connectivity_service.dart';
 
@@ -64,18 +65,23 @@ class PerplexityService {
   /// [word] - The word to explain
   /// [bookTitle] - The title of the book for context
   /// [bookAuthor] - The author of the book for additional context
+  /// [level] - The explanation depth level (Simple, Literary, Deep)
   /// [forceRefresh] - Skip cache and fetch fresh from API
   Future<WordExplanationResult> explainWord({
     required String word,
     required String bookTitle,
     required String bookAuthor,
+    ExplanationLevel level = ExplanationLevel.simple,
     bool forceRefresh = false,
   }) async {
     try {
+      // Generate cache key that includes the level
+      final cacheKey = '${word.toLowerCase()}_${level.name}';
+
       // Step 1: Check cache first (unless force refresh)
       if (!forceRefresh) {
         final cacheResult = await _cache.getExplanation(
-          word: word,
+          word: cacheKey,
           bookTitle: bookTitle,
           bookAuthor: bookAuthor,
         );
@@ -93,7 +99,7 @@ class PerplexityService {
       if (!isOnline) {
         // Try cache one more time in case forceRefresh was true
         final cacheResult = await _cache.getExplanation(
-          word: word,
+          word: cacheKey,
           bookTitle: bookTitle,
           bookAuthor: bookAuthor,
         );
@@ -129,28 +135,10 @@ class PerplexityService {
       final requestBody = jsonEncode({
         'model': ApiConfig.perplexityModel,
         'messages': [
-          {
-            'role': 'system',
-            'content':
-                '''You are a literary companion helping readers understand unfamiliar words encountered while reading.
-
-Provide your response in EXACTLY this format (use the separator line exactly as shown):
-
-[4-5 word short definition in plain text]
----
-[Detailed contextual explanation in 2-3 sentences explaining the word's significance in the context of the book or literary genre, using sophisticated but accessible language in flowing prose.]
-
-IMPORTANT: Do NOT use any markdown formatting like asterisks, bold, or italics. Write everything in plain text only.
-
-Example:
-
-Lasting only a brief moment
----
-In the context of this novel, "ephemeral" captures the fleeting nature of human connections and memories that the author weaves throughout the narrative. It emphasizes how precious moments become precisely because they cannot last forever.''',
-          },
+          {'role': 'system', 'content': level.systemPrompt},
           {'role': 'user', 'content': prompt},
         ],
-        'max_tokens': ApiConfig.maxTokens,
+        'max_tokens': level.maxTokens,
         'temperature': ApiConfig.temperature,
       });
 
@@ -174,7 +162,7 @@ In the context of this novel, "ephemeral" captures the fleeting nature of human 
 
           // Step 5: Cache the successful response for offline access
           await _cache.cacheExplanation(
-            word: word,
+            word: cacheKey,
             bookTitle: bookTitle,
             bookAuthor: bookAuthor,
             explanation: explanation,
