@@ -2,30 +2,53 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../config/api_config.dart';
+import 'word_explanation_cache_service.dart';
+import 'connectivity_service.dart';
 
 /// Result class for word explanation API calls
 class WordExplanationResult {
   final bool success;
   final String? explanation;
   final String? error;
+  final String source; // 'cache', 'api', or 'error'
 
   const WordExplanationResult._({
     required this.success,
     this.explanation,
     this.error,
+    this.source = 'api',
   });
 
-  factory WordExplanationResult.success(String explanation) {
-    return WordExplanationResult._(success: true, explanation: explanation);
+  factory WordExplanationResult.success(
+    String explanation, {
+    String source = 'api',
+  }) {
+    return WordExplanationResult._(
+      success: true,
+      explanation: explanation,
+      source: source,
+    );
   }
 
   factory WordExplanationResult.failure(String error) {
-    return WordExplanationResult._(success: false, error: error);
+    return WordExplanationResult._(
+      success: false,
+      error: error,
+      source: 'error',
+    );
   }
+
+  /// Check if result came from cache
+  bool get isFromCache => source == 'cache';
 }
 
 /// Service for interacting with Perplexity API
 /// Provides contextual word explanations based on book context
+///
+/// Features:
+/// - Offline-first: Checks cache before making API calls
+/// - Automatic caching of API responses
+/// - Connectivity-aware: Returns cached results when offline
 class PerplexityService {
   // Singleton pattern
   static final PerplexityService _instance = PerplexityService._internal();
@@ -33,25 +56,68 @@ class PerplexityService {
   PerplexityService._internal();
 
   final http.Client _client = http.Client();
+  final WordExplanationCacheService _cache = WordExplanationCacheService();
+  final ConnectivityService _connectivity = ConnectivityService();
 
   /// Get explanation for a word in the context of a specific book
   ///
   /// [word] - The word to explain
   /// [bookTitle] - The title of the book for context
   /// [bookAuthor] - The author of the book for additional context
+  /// [forceRefresh] - Skip cache and fetch fresh from API
   Future<WordExplanationResult> explainWord({
     required String word,
     required String bookTitle,
     required String bookAuthor,
+    bool forceRefresh = false,
   }) async {
     try {
-      // Check if API key is configured
+      // Step 1: Check cache first (unless force refresh)
+      if (!forceRefresh) {
+        final cacheResult = await _cache.getExplanation(
+          word: word,
+          bookTitle: bookTitle,
+          bookAuthor: bookAuthor,
+        );
+
+        if (cacheResult.hit && cacheResult.explanation != null) {
+          return WordExplanationResult.success(
+            cacheResult.explanation!,
+            source: 'cache',
+          );
+        }
+      }
+
+      // Step 2: Check connectivity
+      final isOnline = _connectivity.isOnline;
+      if (!isOnline) {
+        // Try cache one more time in case forceRefresh was true
+        final cacheResult = await _cache.getExplanation(
+          word: word,
+          bookTitle: bookTitle,
+          bookAuthor: bookAuthor,
+        );
+
+        if (cacheResult.hit && cacheResult.explanation != null) {
+          return WordExplanationResult.success(
+            cacheResult.explanation!,
+            source: 'cache',
+          );
+        }
+
+        return WordExplanationResult.failure(
+          'You\'re offline. Connect to the internet to look up new words.',
+        );
+      }
+
+      // Step 3: Check if API key is configured
       if (!ApiConfig.isApiKeyConfigured) {
         return WordExplanationResult.failure(
           'API key not configured. Please add your Perplexity API key to the .env file.',
         );
       }
 
+      // Step 4: Make API call
       final apiKey = ApiConfig.perplexityApiKey;
       final url = Uri.parse(
         '${ApiConfig.perplexityBaseUrl}${ApiConfig.chatCompletionsEndpoint}',
@@ -104,7 +170,17 @@ In the context of this novel, "ephemeral" captures the fleeting nature of human 
         final content = data['choices']?[0]?['message']?['content'] as String?;
 
         if (content != null && content.isNotEmpty) {
-          return WordExplanationResult.success(content.trim());
+          final explanation = content.trim();
+
+          // Step 5: Cache the successful response for offline access
+          await _cache.cacheExplanation(
+            word: word,
+            bookTitle: bookTitle,
+            bookAuthor: bookAuthor,
+            explanation: explanation,
+          );
+
+          return WordExplanationResult.success(explanation, source: 'api');
         } else {
           return WordExplanationResult.failure(
             'Received empty response from API.',

@@ -6,6 +6,8 @@ import 'screens/splash_screen.dart';
 import 'screens/library_screen.dart';
 import 'models/book.dart';
 import 'services/storage_service.dart';
+import 'services/database/database_service.dart';
+import 'services/connectivity_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -16,8 +18,8 @@ void main() async {
     debugPrint('Warning: .env file not found. API features may not work.');
   });
 
-  // Initialize storage service
-  await StorageService().initialize();
+  // Initialize services
+  await _initializeServices();
 
   // Set preferred orientations
   SystemChrome.setPreferredOrientations([
@@ -26,6 +28,20 @@ void main() async {
   ]);
 
   runApp(const ContextaApp());
+}
+
+/// Initialize all required services
+Future<void> _initializeServices() async {
+  // Initialize storage service (SharedPreferences)
+  await StorageService().initialize();
+
+  // Initialize SQLite database for offline-first caching
+  await DatabaseService().database;
+  debugPrint('DatabaseService: Initialized');
+
+  // Initialize connectivity monitoring
+  await ConnectivityService().initialize();
+  debugPrint('ConnectivityService: Initialized');
 }
 
 /// Main application widget
