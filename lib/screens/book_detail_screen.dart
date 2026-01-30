@@ -13,6 +13,7 @@ import '../widgets/loading_dots.dart';
 import '../widgets/contexta_bottom_sheet.dart';
 import '../widgets/explanation_level_selector.dart';
 import '../widgets/word_frequency_card.dart';
+import '../widgets/export_options_sheet.dart';
 import '../services/perplexity_service.dart';
 import '../services/storage_service.dart';
 
@@ -206,6 +207,17 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
         );
       }
     }
+  }
+
+  /// Show export options sheet
+  void _showExportOptions() {
+    showContextaBottomSheet(
+      context: context,
+      child: ExportOptionsSheet(
+        book: widget.book,
+        onClose: () => Navigator.of(context).pop(),
+      ),
+    );
   }
 
   /// Show sort options
@@ -498,7 +510,9 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
 
           // Sort button (only show if there are words)
           if (widget.book.words.isNotEmpty) ...[
-            const SizedBox(width: 12),
+            const SizedBox(width: 8),
+            _ExportButton(onTap: _showExportOptions),
+            const SizedBox(width: 8),
             _SortButton(currentSort: _sortOption, onTap: _showSortOptions),
           ],
         ],
@@ -544,6 +558,51 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
 }
 
 /// Sort button with current sort indicator
+class _ExportButton extends StatefulWidget {
+  final VoidCallback onTap;
+
+  const _ExportButton({required this.onTap});
+
+  @override
+  State<_ExportButton> createState() => _ExportButtonState();
+}
+
+class _ExportButtonState extends State<_ExportButton> {
+  bool _isPressed = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTapDown: (_) => setState(() => _isPressed = true),
+      onTapUp: (_) => setState(() => _isPressed = false),
+      onTapCancel: () => setState(() => _isPressed = false),
+      onTap: widget.onTap,
+      child: AnimatedScale(
+        duration: AppTheme.buttonPressDuration,
+        scale: _isPressed ? 0.95 : 1.0,
+        child: Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color:
+                _isPressed
+                    ? Theme.of(
+                      context,
+                    ).colorScheme.primary.withValues(alpha: 0.1)
+                    : Colors.transparent,
+            borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
+            border: Border.all(color: AppTheme.getBorder(context)),
+          ),
+          child: Icon(
+            Icons.ios_share_rounded,
+            size: 18,
+            color: Theme.of(context).colorScheme.primary,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _SortButton extends StatefulWidget {
   final SortOption currentSort;
   final VoidCallback onTap;

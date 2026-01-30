@@ -10,6 +10,7 @@ import '../widgets/logo.dart';
 import '../widgets/global_search.dart';
 import '../widgets/contexta_bottom_sheet.dart';
 import '../widgets/word_explanation_sheet.dart';
+import '../widgets/export_options_sheet.dart';
 import 'add_book_screen.dart';
 import 'book_detail_screen.dart';
 
@@ -130,6 +131,17 @@ class _LibraryScreenState extends State<LibraryScreen>
     );
   }
 
+  /// Show export options for all books
+  void _showExportAllOptions() {
+    showContextaBottomSheet(
+      context: context,
+      child: ExportOptionsSheet(
+        books: widget.books,
+        onClose: () => Navigator.of(context).pop(),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     // Handle different views
@@ -184,9 +196,17 @@ class _LibraryScreenState extends State<LibraryScreen>
       appBar: ContextaAppBar(
         title: 'My Books',
         showBackButton: false,
-        rightAction: _ThemeToggleButton(
-          isDarkMode: widget.isDarkMode,
-          onTap: widget.onToggleTheme,
+        rightAction: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Export all button (only show if there are words)
+            if (hasAnyWords) _ExportAllButton(onTap: _showExportAllOptions),
+            const SizedBox(width: 4),
+            _ThemeToggleButton(
+              isDarkMode: widget.isDarkMode,
+              onTap: widget.onToggleTheme,
+            ),
+          ],
         ),
       ),
       floatingActionButton: _buildFAB(context),
@@ -342,6 +362,52 @@ class _LibraryScreenState extends State<LibraryScreen>
           ),
         );
       },
+    );
+  }
+}
+
+/// Export all button for exporting vocabulary from all books
+class _ExportAllButton extends StatefulWidget {
+  final VoidCallback onTap;
+
+  const _ExportAllButton({required this.onTap});
+
+  @override
+  State<_ExportAllButton> createState() => _ExportAllButtonState();
+}
+
+class _ExportAllButtonState extends State<_ExportAllButton> {
+  bool _isPressed = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTapDown: (_) => setState(() => _isPressed = true),
+      onTapUp: (_) => setState(() => _isPressed = false),
+      onTapCancel: () => setState(() => _isPressed = false),
+      onTap: widget.onTap,
+      child: AnimatedScale(
+        duration: AppTheme.buttonPressDuration,
+        scale: _isPressed ? 0.9 : 1.0,
+        child: Container(
+          width: 40,
+          height: 40,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color:
+                _isPressed
+                    ? Theme.of(
+                      context,
+                    ).colorScheme.primary.withValues(alpha: 0.1)
+                    : Colors.transparent,
+          ),
+          child: Icon(
+            Icons.ios_share_rounded,
+            color: Theme.of(context).colorScheme.onSurface,
+            size: 20,
+          ),
+        ),
+      ),
     );
   }
 }

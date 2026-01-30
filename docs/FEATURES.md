@@ -1,6 +1,6 @@
 # Contexta - Complete Feature Documentation
 
-> **Version:** 1.4.0  
+> **Version:** 1.5.0  
 > **Last Updated:** January 30, 2026  
 > **Authors:** Development Team  
 > **Repository:** github.com/jiteshh-10/Contexta
@@ -46,10 +46,16 @@
    - [UI Components](#72-ui-components)
    - [Search Logic](#73-search-logic)
    - [Integration](#74-integration)
-8. [API Reference](#8-api-reference)
-9. [Project Architecture](#9-project-architecture)
-10. [Troubleshooting](#10-troubleshooting)
-11. [Changelog](#11-changelog)
+8. [Export Words (v1.5.0)](#8-export-words-v150)
+   - [Overview](#81-overview)
+   - [Export Formats](#82-export-formats)
+   - [UI Components](#83-ui-components)
+   - [Services](#84-services)
+   - [Integration](#85-integration)
+9. [API Reference](#9-api-reference)
+10. [Project Architecture](#10-project-architecture)
+11. [Troubleshooting](#11-troubleshooting)
+12. [Changelog](#12-changelog)
 
 ---
 
@@ -1514,7 +1520,370 @@ lib/
 
 ---
 
-## 8. API Reference
+## 8. Export Words (v1.5.0)
+
+*Feature: Share your vocabulary collection as text or markdown*
+
+### 8.1 Overview
+
+Export lets users share their curated vocabulary collection with others or archive it externally. Built with "serious reader appeal" — minimal UI, powerful output.
+
+#### Key Principles
+
+- **Two Formats**: Plain text (.txt) and Markdown (.md)
+- **Two Scopes**: Per-book or entire library
+- **Native Share**: Uses device share intent for universal compatibility
+- **Instant Preview**: See what you're exporting before sharing
+- **Zero Friction**: One tap to export, one tap to share
+
+#### Why This Feature
+
+| Use Case | Export Solution |
+|----------|-----------------|
+| Share vocabulary with study partner | Export as markdown, share via messaging |
+| Backup words before device change | Export all books, save to cloud |
+| Create flashcards in another app | Plain text format, copy to Anki |
+| Review words on paper | Markdown renders beautifully when printed |
+| Keep a professional archive | PDF with proper formatting and pagination |
+
+### 8.2 Export Formats
+
+#### ExportFormat Enum
+
+**Location:** `lib/services/export_service.dart`
+
+```dart
+enum ExportFormat {
+  plainText('Plain Text', 'txt', 'text/plain'),
+  markdown('Markdown', 'md', 'text/markdown'),
+  pdf('PDF Document', 'pdf', 'application/pdf');
+
+  final String label;
+  final String extension;
+  final String mimeType;
+}
+```
+
+#### Plain Text Output
+
+Clean, ASCII-styled format for maximum compatibility:
+
+```
+══════════════════════════════════════════════════════════
+     VOCABULARY COLLECTION
+     The Brothers Karamazov by Fyodor Dostoevsky
+══════════════════════════════════════════════════════════
+
+📚 Total Words: 5
+📅 Exported: January 30, 2026
+
+──────────────────────────────────────────────────────────
+
+1. EPHEMERAL
+   Definition: Brief, short-lived
+   
+   Context: In the context of Dostoevsky's exploration of 
+   suffering and redemption...
+   
+   Encountered: 3 times
+   Added: January 30, 2026
+
+──────────────────────────────────────────────────────────
+
+2. NIHILISM
+   ...
+```
+
+#### Markdown Output
+
+Rich formatting for notes apps, Obsidian, Notion, etc.:
+
+```markdown
+# 📚 Vocabulary Collection
+
+## The Brothers Karamazov
+*by Fyodor Dostoevsky*
+
+> **5 words** collected  
+> Exported: January 30, 2026
+
+---
+
+### Ephemeral
+*Added: January 30, 2026 • Encountered 3 times*
+
+**Definition:** Brief, short-lived
+
+**Context:** In the context of Dostoevsky's exploration...
+
+> 💭 *Difficulty: Philosophical usage*
+
+---
+
+### Nihilism
+...
+```
+
+#### PDF Output
+
+Professional document format with:
+- **Cover page** for multi-book exports with title and word count
+- **Page headers** with book title and author
+- **Page numbers** in footer
+- **Styled word cards** with background, proper spacing
+- **Difficulty and frequency badges** when available
+
+**Technical Details:**
+- Uses `pdf` package (dart_pdf) for pure Dart PDF generation
+- A4 page format with 40pt margins
+- Multi-page support with automatic pagination
+- Works on all platforms (mobile, web, desktop)
+
+### 8.3 UI Components
+
+#### ExportOptionsSheet
+
+**Location:** `lib/widgets/export_options_sheet.dart`
+
+Bottom sheet with format selection and preview:
+
+```dart
+ExportOptionsSheet(
+  book: currentBook,           // For single book export
+  // OR
+  books: allBooks,             // For all books export
+  onClose: () => Navigator.pop(context),
+)
+```
+
+**Features:**
+- Format selection cards with animated border
+- Toggle preview with expand animation
+- Preview limited to 500 characters
+- Share button with loading state
+- Success/error feedback via snackbar
+
+**Animation Details:**
+- Format selection: 200ms border color transition
+- Preview expand: 300ms height animation
+- Button press: 0.96 scale with haptic feedback
+- Loading: Three-dot animated indicator
+
+#### _FormatOption Widget
+
+Format selection card with radio-button behavior:
+
+```dart
+_FormatOption(
+  format: ExportFormat.markdown,
+  isSelected: _selectedFormat == ExportFormat.markdown,
+  onTap: () => setState(() => _selectedFormat = ExportFormat.markdown),
+)
+```
+
+**Visual States:**
+- Unselected: Muted border, gray icon
+- Selected: Primary border, primary icon, subtle background tint
+
+#### _ExportButton (BookDetailScreen)
+
+Icon button in collection header for per-book export:
+
+```dart
+_ExportButton(onTap: _showExportOptions)
+```
+
+**Design:** iOS-style share icon, matches sort button style
+
+#### _ExportAllButton (LibraryScreen)
+
+Icon button in app bar for full library export:
+
+```dart
+_ExportAllButton(onTap: _showExportAllOptions)
+```
+
+**Design:** Circular button, appears only when books have words
+
+### 8.4 Services
+
+#### ExportService
+
+**Location:** `lib/services/export_service.dart`
+
+Singleton service handling content generation and file sharing:
+
+```dart
+class ExportService {
+  static final ExportService _instance = ExportService._internal();
+  factory ExportService() => _instance;
+  
+  /// Export and share via native share intent
+  Future<ExportResult> exportAndShare({
+    required ExportFormat format,
+    required ExportScope scope,
+    Book? book,                    // Required for singleBook scope
+    List<Book>? books,             // Required for allBooks scope
+  });
+  
+  /// Get preview content (truncated)
+  String previewContent({
+    required ExportFormat format,
+    required ExportScope scope,
+    Book? book,
+    List<Book>? books,
+    int maxLength = 500,
+  });
+}
+```
+
+#### ExportResult
+
+Result model for export operations:
+
+```dart
+class ExportResult {
+  final bool success;
+  final String? filePath;     // Path to generated file
+  final int wordCount;        // Total words exported
+  final String? error;        // Error message if failed
+}
+```
+
+#### ExportScope Enum
+
+```dart
+enum ExportScope {
+  singleBook,     // Export one book's words
+  allBooks,       // Export entire library
+}
+```
+
+#### File Naming
+
+Generated filenames are human-readable and collision-resistant:
+
+```dart
+String _generateFileName(String title, ExportFormat format) {
+  final sanitized = title
+    .toLowerCase()
+    .replaceAll(RegExp(r'[^a-z0-9]+'), '_')
+    .replaceAll(RegExp(r'_+'), '_')
+    .replaceAll(RegExp(r'^_|_$'), '');
+  final date = DateFormat('yyyy-MM-dd').format(DateTime.now());
+  return '${sanitized}_words_$date.${format.extension}';
+}
+```
+
+**Examples:**
+- `the_brothers_karamazov_words_2026-01-30.md`
+- `contexta_vocabulary_2026-01-30.txt`
+
+### 8.5 Integration
+
+#### In BookDetailScreen
+
+Export button appears in collection header next to sort button:
+
+```dart
+// In _buildCollectionHeader()
+if (widget.book.words.isNotEmpty) ...[
+  const SizedBox(width: 8),
+  _ExportButton(onTap: _showExportOptions),
+  const SizedBox(width: 8),
+  _SortButton(currentSort: _sortOption, onTap: _showSortOptions),
+],
+```
+
+Method to show export sheet:
+
+```dart
+void _showExportOptions() {
+  showContextaBottomSheet(
+    context: context,
+    child: ExportOptionsSheet(
+      book: widget.book,
+      onClose: () => Navigator.of(context).pop(),
+    ),
+  );
+}
+```
+
+#### In LibraryScreen
+
+Export all button in app bar when library has words:
+
+```dart
+// In build()
+appBar: ContextaAppBar(
+  title: 'My Books',
+  showBackButton: false,
+  rightAction: Row(
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      if (hasAnyWords)
+        _ExportAllButton(onTap: _showExportAllOptions),
+      const SizedBox(width: 4),
+      _ThemeToggleButton(
+        isDarkMode: widget.isDarkMode,
+        onTap: widget.onToggleTheme,
+      ),
+    ],
+  ),
+),
+```
+
+Method to show export all sheet:
+
+```dart
+void _showExportAllOptions() {
+  showContextaBottomSheet(
+    context: context,
+    child: ExportOptionsSheet(
+      books: widget.books,
+      onClose: () => Navigator.of(context).pop(),
+    ),
+  );
+}
+```
+
+### Files Structure
+
+```
+lib/
+├── services/
+│   └── export_service.dart          # NEW
+│       ├── ExportFormat             # Enum
+│       ├── ExportScope              # Enum
+│       ├── ExportResult             # Model
+│       └── ExportService            # Singleton
+├── widgets/
+│   └── export_options_sheet.dart    # NEW
+│       ├── ExportOptionsSheet       # Main widget
+│       ├── _FormatOption            # Format card
+│       ├── _ExportButton            # Share button
+│       └── _CloseButton             # Close button
+└── screens/
+    ├── book_detail_screen.dart      # MODIFIED
+    │   ├── _showExportOptions()     # NEW
+    │   └── _ExportButton            # NEW widget
+    └── library_screen.dart          # MODIFIED
+        ├── _showExportAllOptions()  # NEW
+        └── _ExportAllButton         # NEW widget
+```
+
+### Dependencies Added
+
+```yaml
+# pubspec.yaml
+dependencies:
+  share_plus: ^10.1.4      # Native share intent
+  path_provider: ^2.1.5    # Temporary file storage
+```
+
+---
+
+## 9. API Reference
 
 ### PerplexityService
 
@@ -1571,7 +1940,7 @@ ExplanationLevel loadExplanationLevel();
 
 ---
 
-## 9. Project Architecture
+## 10. Project Architecture
 
 ### High-Level Architecture
 
@@ -1687,9 +2056,32 @@ class _MyAppState extends State<MyApp> {
 
 ---
 
-## 10. Troubleshooting
+## 11. Troubleshooting
 
 ### Common Issues
+
+#### Export Share Not Working on Emulator
+**Symptoms:** Tapping share button does nothing, no share dialog appears
+
+**Cause:** Android Emulator may not have apps registered to handle share intents.
+
+**Solutions:**
+1. **Test on real device** - Share works correctly on physical Android/iOS devices
+2. **Install sharing apps** - Install Gmail, Drive, or another app that handles file sharing
+3. **Check logs** - Look for `ExportService: Opening share dialog...` in console
+4. **Verify file creation** - Check for `ExportService: PDF written` or `Text content written`
+
+**Debug Output:**
+```
+ExportService: Starting export with format PDF Document
+ExportService: Exporting 8 words
+ExportService: Generated filename: 1984_words_2026-01-30.pdf
+ExportService: File path: /data/.../1984_words_2026-01-30.pdf
+ExportService: Generating PDF...
+ExportService: PDF written (12345 bytes)
+ExportService: Opening share dialog...
+ExportService: Share completed with status: ShareResultStatus.success
+```
 
 #### Cache Not Working
 **Symptoms:** Always shows "From API", never "From cache"
@@ -1738,7 +2130,57 @@ WordExplanationCache: HIT for "word"
 WordExplanationCache: MISS for "word"
 WordExplanationCache: Cached "word"
 ConnectivityService: Status changed to ConnectivityStatus.online
+ExportService: Starting export with format PDF Document
+ExportService: Share completed with status: ShareResultStatus.success
 ```
+
+---
+
+## 12. Known Issues & Security Considerations
+
+### Known Issues
+
+| Issue | Severity | Status | Workaround |
+|-------|----------|--------|------------|
+| Share may not work on emulators | Low | By Design | Test on real device |
+| Large exports (1000+ words) may be slow | Low | Open | Paginate or limit export |
+| ID collision possible in same millisecond | Low | Open | Very unlikely in practice |
+
+### Security Considerations
+
+#### API Key Handling
+- ✅ API key stored in `.env` file (not committed to git)
+- ✅ `.env.example` provides template without sensitive data
+- ✅ Fallback message when API key is missing
+- ⚠️ API key is sent to Perplexity API (required for functionality)
+
+#### Data Storage
+- ✅ SQLite database stored in app's private directory
+- ✅ SharedPreferences for non-sensitive settings
+- ✅ No user data sent to external servers (except word explanations)
+- ✅ Export files written to temporary directory
+
+#### Input Handling
+- ✅ JSON encoding for API requests (prevents injection)
+- ✅ Filename sanitization for exports (removes special characters)
+- ⚠️ User input used directly in AI prompts (by design for context)
+
+### Memory Management
+
+#### Services Lifecycle
+```dart
+// In _ContextaAppState.dispose()
+@override
+void dispose() {
+  ConnectivityService().dispose();  // Cleans up StreamController
+  super.dispose();
+}
+```
+
+#### Resource Cleanup
+- ✅ ConnectivityService disposes StreamController and subscription
+- ✅ Animation controllers disposed in widget dispose methods
+- ✅ HTTP clients created per-request in singleton services
 
 ---
 
@@ -1779,9 +2221,87 @@ dependencies:
 
 ---
 
-## 11. Changelog
+## 12. Changelog
 
 All notable changes to Contexta are documented here.
+
+### [1.5.1] - 2026-01-30
+
+#### Fixed - Bug Fixes & Improvements
+*Commit: fix: Critical bug fixes and improvements*
+
+- **Filename Truncation Bug**
+  - Fixed: Substring was using original length instead of sanitized length
+  - Now properly limits to 30 characters after sanitization
+  - Added trimming of leading/trailing underscores
+
+- **Memory Leak Prevention**
+  - Added `dispose()` to `_ContextaAppState` to clean up `ConnectivityService`
+  - Proper cleanup of StreamController and subscriptions
+
+- **Export Debugging**
+  - Added comprehensive debug logging throughout export process
+  - Logs file creation, byte sizes, and share status
+  - Helps diagnose issues on emulators
+
+- **UI Improvements**
+  - Reduced format option padding for 3-column layout (12x8 instead of 16x12)
+  - Smaller icons and text for better fit
+  - Centered text alignment in format cards
+
+---
+
+### [1.5.0] - 2026-01-30
+
+#### Added - Export Words
+*Commit: feat: Add export functionality for vocabulary sharing*
+
+- **ExportService**
+  - Singleton service for content generation
+  - Plain text format with ASCII styling
+  - Markdown format with rich formatting
+  - PDF format with professional layout
+  - File generation with sanitized filenames
+  - Native share via share_plus
+
+- **PDF Generation**
+  - Cover page for multi-book exports
+  - Book headers with title and author
+  - Styled word cards with backgrounds
+  - Page numbers in footer
+  - Multi-page support with pagination
+  - Uses dart_pdf package
+
+- **ExportOptionsSheet Widget**
+  - Bottom sheet for format selection
+  - Three format options: Plain Text, Markdown, PDF
+  - Preview toggle with expand animation
+  - Loading state with animated dots
+  - Success/error snackbar feedback
+  - Haptic feedback on interactions
+
+- **ExportFormat Enum**
+  - Plain Text (.txt) for universal compatibility
+  - Markdown (.md) for notes apps like Obsidian, Notion
+  - PDF (.pdf) for professional archival
+  - Proper MIME types for sharing
+
+- **BookDetailScreen Integration**
+  - Export button in collection header
+  - Per-book export with format choice
+  - iOS-style share icon design
+
+- **LibraryScreen Integration**
+  - Export all button in app bar
+  - Appears only when books have words
+  - Full library export capability
+
+- **Dependencies**
+  - Added share_plus ^10.1.4
+  - Added path_provider ^2.1.5
+  - Added pdf ^3.11.3
+
+---
 
 ### [1.4.0] - 2026-01-30
 

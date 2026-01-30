@@ -48,6 +48,15 @@ dependencies:
   # Network connectivity status
   connectivity_plus: ^6.1.4
   
+  # Share files and text
+  share_plus: ^10.1.4
+  
+  # Path provider for file storage
+  path_provider: ^2.1.5
+  
+  # PDF generation
+  pdf: ^3.11.3
+  
   # Environment configuration
   flutter_dotenv: ^5.1.0
 

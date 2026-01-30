@@ -69,6 +69,13 @@ class _ContextaAppState extends State<ContextaApp> {
     _initializeApp();
   }
 
+  @override
+  void dispose() {
+    // Clean up services to prevent memory leaks
+    ConnectivityService().dispose();
+    super.dispose();
+  }
+
   /// Initialize app: load saved data and handle splash timing
   Future<void> _initializeApp() async {
     // Load saved books and theme preference
