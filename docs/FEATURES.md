@@ -1,6 +1,6 @@
 # Contexta - Complete Feature Documentation
 
-> **Version:** 1.10.0  
+> **Version:** 1.11.0  
 > **Last Updated:** January 31, 2026  
 > **Authors:** Development Team  
 > **Repository:** github.com/jiteshh-10/Contexta
@@ -88,10 +88,20 @@
     - [UI Components](#136-ui-components)
     - [Animation & Micro-interactions](#137-animation--micro-interactions)
     - [Copy Tone Guidelines](#138-copy-tone-guidelines)
-14. [API Reference](#14-api-reference)
-15. [Project Architecture](#15-project-architecture)
-16. [Troubleshooting](#16-troubleshooting)
-17. [Changelog](#17-changelog)
+14. [Book Suggestions (v1.11.0)](#14-book-suggestions-v1110)
+    - [Overview](#141-overview)
+    - [Core Philosophy](#142-core-philosophy)
+    - [Entry Point](#143-entry-point)
+    - [Empty Shelf State](#144-empty-shelf-state)
+    - [Suggestions State](#145-suggestions-state)
+    - [Services](#146-services)
+    - [UI Components](#147-ui-components)
+    - [Animation & Timing](#148-animation--timing)
+    - [Copy Tone Guidelines](#149-copy-tone-guidelines)
+15. [API Reference](#15-api-reference)
+16. [Project Architecture](#16-project-architecture)
+17. [Troubleshooting](#17-troubleshooting)
+18. [Changelog](#18-changelog)
 
 ---
 
@@ -3235,7 +3245,395 @@ The app feels like:
 
 ---
 
-## 14. API Reference
+## 14. Book Suggestions (v1.11.0)
+
+### 14.1 Overview
+
+Help readers **discover what to read next** without pushing recommendations, demanding preferences, or breaking Contexta's calm, bookish tone.
+
+The feature feels **earned, optional, and respectful**.
+
+---
+
+### 14.2 Core Philosophy
+
+**Non-Negotiable UX Principles:**
+
+| Principle | Implementation |
+|-----------|----------------|
+| User-initiated only | Never auto-show suggestions |
+| Explain absence clearly | No empty or confusing states |
+| Few, thoughtful suggestions | Max 3 at a time |
+| Always explain "why" | Trust > accuracy |
+| No premature personalization | Wait for reading history |
+
+**The Librarian Metaphor:**
+
+Contexta sounds like a **quiet librarian**, not an algorithm:
+
+| ✅ Use | ❌ Avoid |
+|--------|----------|
+| "You might enjoy…" | "Recommended for you" |
+| "Often read after…" | "Top picks" |
+| "Similar in tone to…" | "Trending" |
+| "Based on your reading…" | "AI-powered" |
+
+---
+
+### 14.3 Entry Point
+
+**Location:** App Bar (top-right)
+
+**Icon:** Open book (`Icons.auto_stories_outlined`)
+- Same visual priority as settings icon
+- No "AI" badge, sparkles, or glow
+- Neutral, bookish, calm
+
+**Tooltip:** "Reading suggestions"
+
+```dart
+// Library screen app bar
+ContextaAppBar(
+  title: 'My Shelf',
+  rightAction: Row(
+    children: [
+      _SuggestionsButton(onTap: _showBookSuggestions),
+      _SettingsButton(onTap: _showSettings),
+    ],
+  ),
+)
+```
+
+---
+
+### 14.4 Empty Shelf State
+
+**Purpose:** Explain why suggestions don't exist yet. Invite, don't pressure.
+
+**Visual Design:**
+
+```
+┌─────────────────────────────────────┐
+│                                     │
+│          [📚 Icon in circle]        │
+│                                     │
+│  "Every reading journey starts      │
+│   somewhere."                       │
+│        (italic, muted)              │
+│                                     │
+│  "Add your first book to Contexta,  │
+│   and this space will begin         │
+│   offering thoughtful suggestions   │
+│   shaped by how you read."          │
+│        (body, muted)                │
+│                                     │
+│    [ Add your first book ]          │
+│        (primary button)             │
+│                                     │
+│  ─────────────────────────          │
+│                                     │
+│  Often chosen as a starting point   │
+│        (label, subtle)              │
+│                                     │
+│  ▌ To Kill a Mockingbird — Lee      │
+│    A timeless exploration...        │
+│                                     │
+│  ▌ Pride and Prejudice — Austen     │
+│    A witty examination...           │
+│                                     │
+│  ▌ 1984 — Orwell                    │
+│    A profound meditation...         │
+│                                     │
+└─────────────────────────────────────┘
+```
+
+**Timeless Classics:**
+
+```dart
+class TimelessSuggestions {
+  static const List<BookSuggestion> classics = [
+    BookSuggestion(
+      title: 'To Kill a Mockingbird',
+      author: 'Harper Lee',
+      reason: 'A timeless exploration of justice and moral growth.',
+    ),
+    BookSuggestion(
+      title: 'Pride and Prejudice',
+      author: 'Jane Austen',
+      reason: 'A witty examination of society and human nature.',
+    ),
+    BookSuggestion(
+      title: '1984',
+      author: 'George Orwell',
+      reason: 'A profound meditation on power and truth.',
+    ),
+  ];
+}
+```
+
+---
+
+### 14.5 Suggestions State
+
+**Purpose:** Offer gentle guidance based on reading history.
+
+**Data Used (UX-level):**
+- Books on shelf
+- Authors read
+- Words saved (tone/difficulty)
+- Reading frequency (light signal)
+
+No explicit preferences. No questionnaires.
+
+**Visual Design:**
+
+```
+┌─────────────────────────────────────┐
+│                                     │
+│  📚 Reading Suggestions      🔄     │
+│                                     │
+│  "Based on your reading…"           │
+│        (header, italic, muted)      │
+│                                     │
+│  ┌─────────────────────────────┐    │
+│  │ The Trial — Franz Kafka     │    │
+│  │ Explores moral uncertainty, │    │
+│  │ similar to themes in your   │    │
+│  │ recent reading.             │    │
+│  │                             │    │
+│  │  [+ Add to Shelf] [Dismiss] │    │
+│  └─────────────────────────────┘    │
+│                                     │
+│  ┌─────────────────────────────┐    │
+│  │ Norwegian Wood — Murakami   │    │
+│  │ Often read after exploring  │    │
+│  │ Dostoevsky's emotional      │    │
+│  │ landscapes.                 │    │
+│  │                             │    │
+│  │  [+ Add to Shelf] [Dismiss] │    │
+│  └─────────────────────────────┘    │
+│                                     │
+│  ┌─────────────────────────────┐    │
+│  │ Stoner — John Williams      │    │
+│  │ You might enjoy its quiet   │    │
+│  │ examination of a literary   │    │
+│  │ life.                       │    │
+│  │                             │    │
+│  │  [+ Add to Shelf] [Dismiss] │    │
+│  └─────────────────────────────┘    │
+│                                     │
+└─────────────────────────────────────┘
+```
+
+**Actions Per Suggestion:**
+
+| Action | Behavior |
+|--------|----------|
+| Add to Shelf | Adds book, removes card, closes if last |
+| Dismiss | Removes card, closes if last |
+
+No like/dislike. No feedback prompts.
+
+---
+
+### 14.6 Services
+
+#### BookSuggestionService
+
+```dart
+class BookSuggestionService {
+  /// Get personalized suggestions
+  Future<BookSuggestionsResult> getSuggestions({
+    required List<Book> books,
+    bool forceRefresh = false,
+  });
+
+  /// Clear cached suggestions
+  Future<void> clearCache();
+}
+```
+
+**Features:**
+- 24-hour cache with library hash
+- Filters out books already on shelf
+- Connectivity-aware (cached when offline)
+- Max 3 suggestions per request
+
+**AI Prompt Design:**
+
+```
+You are a thoughtful librarian helping a reader discover their next book.
+
+RULES:
+1. Never suggest books already in their library
+2. Each suggestion must include a clear, personal reason
+3. Use phrases like "You might enjoy...", "Similar in tone to..."
+4. Never use "recommended", "top pick", "trending"
+5. Keep reasons to one thoughtful sentence
+```
+
+#### BookSuggestion Model
+
+```dart
+class BookSuggestion {
+  final String title;
+  final String author;
+  final String reason;
+  final String? coverUrl;
+  
+  /// Check if matches a shelf book
+  bool matchesBook(String bookTitle, String bookAuthor);
+}
+```
+
+---
+
+### 14.7 UI Components
+
+#### BookSuggestionsSheet
+
+Main orchestrator that switches between states:
+
+```dart
+BookSuggestionsSheet(
+  books: widget.books,
+  onAddBook: (title, author) { ... },
+  onClose: () => Navigator.pop(),
+  onNavigateToAddBook: () => _shelfController.open(),
+)
+```
+
+#### EmptyShelfSuggestions
+
+Calm explanation with optional timeless suggestions:
+
+```dart
+EmptyShelfSuggestions(
+  onAddBook: _handleAddFirstBook,
+  showTimelessSuggestions: true,
+)
+```
+
+#### SuggestionsList
+
+Displays max 3 suggestions with staggered fade-in:
+
+```dart
+SuggestionsList(
+  suggestions: _suggestions,
+  onAddToShelf: _handleAddToShelf,
+  onDismiss: _handleDismiss,
+  isLoading: _isLoading,
+  error: _error,
+  onRetry: _loadSuggestions,
+)
+```
+
+---
+
+### 14.8 Animation & Timing
+
+**Bottom Sheet:**
+- Slide up: 200ms
+- Content fade: 200ms
+- No staggered list in empty state
+
+**Suggestions List:**
+- Staggered fade-in: 70ms gap between cards
+- Each card: 200ms fade with easeOut
+- Feels like "ideas surfacing"
+
+**Refresh Button:**
+- 500ms rotation animation on tap
+- Subtle, not attention-seeking
+
+**Exit Behavior:**
+- Swipe down or tap outside to close
+- No "Are you sure?" prompts
+- Closing = "Not now" (respected)
+
+---
+
+### 14.9 Copy Tone Guidelines
+
+**Header Text:**
+
+```dart
+// Empty state
+"Every reading journey starts somewhere."  // italic, muted
+
+// Has books
+"Based on your reading…"  // italic, muted
+```
+
+**Body Text:**
+
+```dart
+"Add your first book to Contexta, and this space will begin 
+offering thoughtful suggestions shaped by how you read."
+```
+
+**Labels:**
+
+```dart
+"Often chosen as a starting point"  // for timeless classics
+"Finding thoughtful suggestions…"   // loading state
+```
+
+**Reason Examples:**
+
+```dart
+"Explores moral uncertainty, similar to themes in your recent reading."
+"Often read after exploring Dostoevsky's emotional landscapes."
+"You might enjoy its quiet examination of a literary life."
+```
+
+---
+
+### 14.10 Refresh Logic
+
+Suggestions refresh **only when**:
+1. User explicitly taps refresh icon
+2. OR a new book is added to shelf
+
+**Never:**
+- Auto-refresh
+- Show "new suggestions" badges
+- Push notifications
+
+---
+
+### 14.11 Success Criteria
+
+You've built it right if:
+
+✅ Users don't notice it until they need it
+✅ No one asks "why am I seeing this?"
+✅ Users feel understood, not targeted
+✅ The feature feels calm, not exciting
+
+> Excitement is short-lived.  
+> Trust lasts.
+
+---
+
+### 14.12 Project Structure (New Files)
+
+```
+lib/
+├── models/
+│   └── book_suggestion.dart       # Suggestion model + timeless classics
+├── services/
+│   └── book_suggestion_service.dart  # AI-powered suggestions
+└── widgets/
+    ├── book_suggestions_sheet.dart   # Main orchestrator
+    ├── empty_shelf_suggestions.dart  # Empty state UI
+    └── suggestions_list.dart         # Suggestions with animations
+```
+
+---
+
+## 15. API Reference
 
 ### PerplexityService
 
@@ -3292,7 +3690,7 @@ ExplanationLevel loadExplanationLevel();
 
 ---
 
-## 15. Project Architecture
+## 16. Project Architecture
 
 ### High-Level Architecture
 
@@ -3408,7 +3806,7 @@ class _MyAppState extends State<MyApp> {
 
 ---
 
-## 16. Troubleshooting
+## 17. Troubleshooting
 
 ### Common Issues
 
@@ -3573,9 +3971,51 @@ dependencies:
 
 ---
 
-## 17. Changelog
+## 18. Changelog
 
 All notable changes to Contexta are documented here.
+
+### [1.11.0] - 2026-01-31
+
+#### Feature - Gentle Book Suggestions
+*Commit: feat: Add gentle book suggestions feature*
+
+- **BookSuggestionService**
+  - AI-powered suggestions using Perplexity API
+  - 24-hour cache with library hash
+  - Max 3 thoughtful suggestions
+  - Filters out books already on shelf
+  - Connectivity-aware caching
+
+- **BookSuggestion Model**
+  - Title, author, reason fields
+  - Timeless classics for empty shelf
+  - Duplicate detection logic
+
+- **BookSuggestionsSheet**
+  - Main orchestrator widget
+  - Empty shelf state with explanation
+  - Personalized suggestions state
+  - Refresh button with rotation animation
+
+- **EmptyShelfSuggestions Widget**
+  - Calm explanation of absence
+  - "Add your first book" CTA
+  - Optional timeless classics section
+  - Fade-in animation
+
+- **SuggestionsList Widget**
+  - Staggered fade-in (70ms gap)
+  - Add to Shelf / Dismiss actions
+  - Loading and error states
+  - Retry capability
+
+- **App Bar Integration**
+  - Open book icon in top-right
+  - Tooltip: "Reading suggestions"
+  - Same priority as settings icon
+
+---
 
 ### [1.10.0] - 2026-01-31
 

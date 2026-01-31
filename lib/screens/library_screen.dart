@@ -16,6 +16,7 @@ import '../widgets/reading_streak_indicator.dart';
 import '../widgets/settings_sheet.dart';
 import '../widgets/shelf_overlay.dart';
 import '../widgets/add_book_panel.dart';
+import '../widgets/book_suggestions_sheet.dart';
 import 'book_detail_screen.dart';
 
 /// Current view state for the library screen
@@ -209,6 +210,23 @@ class _LibraryScreenState extends State<LibraryScreen>
     );
   }
 
+  /// Show book suggestions bottom sheet
+  void _showBookSuggestions() {
+    showContextaBottomSheet(
+      context: context,
+      child: BookSuggestionsSheet(
+        books: widget.books,
+        onAddBook: (title, author) {
+          widget.onAddBook(title, author);
+        },
+        onClose: () => Navigator.of(context).pop(),
+        onNavigateToAddBook: () {
+          _shelfController.open();
+        },
+      ),
+    );
+  }
+
   /// Handle book placement from shelf
   void _handleBookPlacement(
     String title,
@@ -323,7 +341,14 @@ class _LibraryScreenState extends State<LibraryScreen>
         appBar: ContextaAppBar(
           title: 'My Shelf',
           showBackButton: false,
-          rightAction: _SettingsButton(onTap: _showSettings),
+          rightAction: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _SuggestionsButton(onTap: _showBookSuggestions),
+              const SizedBox(width: 4),
+              _SettingsButton(onTap: _showSettings),
+            ],
+          ),
         ),
         floatingActionButton: _buildFAB(context),
         body:
@@ -520,6 +545,55 @@ class _LibraryScreenState extends State<LibraryScreen>
           ),
         );
       },
+    );
+  }
+}
+
+/// Book suggestions button - open book icon with tooltip
+class _SuggestionsButton extends StatefulWidget {
+  final VoidCallback onTap;
+
+  const _SuggestionsButton({required this.onTap});
+
+  @override
+  State<_SuggestionsButton> createState() => _SuggestionsButtonState();
+}
+
+class _SuggestionsButtonState extends State<_SuggestionsButton> {
+  bool _isPressed = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: 'Reading suggestions',
+      child: GestureDetector(
+        onTapDown: (_) => setState(() => _isPressed = true),
+        onTapUp: (_) => setState(() => _isPressed = false),
+        onTapCancel: () => setState(() => _isPressed = false),
+        onTap: widget.onTap,
+        child: AnimatedScale(
+          duration: AppTheme.buttonPressDuration,
+          scale: _isPressed ? 0.9 : 1.0,
+          child: Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color:
+                  _isPressed
+                      ? Theme.of(
+                        context,
+                      ).colorScheme.primary.withValues(alpha: 0.1)
+                      : Colors.transparent,
+            ),
+            child: Icon(
+              Icons.auto_stories_outlined,
+              color: Theme.of(context).colorScheme.onSurface,
+              size: 22,
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
