@@ -1,7 +1,7 @@
 # Contexta - Complete Feature Documentation
 
-> **Version:** 1.9.0  
-> **Last Updated:** January 30, 2026  
+> **Version:** 1.10.0  
+> **Last Updated:** January 31, 2026  
 > **Authors:** Development Team  
 > **Repository:** github.com/jiteshh-10/Contexta
 
@@ -79,10 +79,19 @@
     - [Components](#124-components)
     - [User Journey](#125-user-journey)
     - [Technical Details](#126-technical-details)
-13. [API Reference](#13-api-reference)
-14. [Project Architecture](#14-project-architecture)
-15. [Troubleshooting](#15-troubleshooting)
-16. [Changelog](#16-changelog)
+13. [Gentle Suggestions (v1.10.0)](#13-gentle-suggestions-v1100)
+    - [Overview](#131-overview)
+    - [Core Principle](#132-core-principle)
+    - [Author Name Suggestions](#133-author-name-suggestions)
+    - [Word Spelling Suggestions](#134-word-spelling-suggestions)
+    - [Services](#135-services)
+    - [UI Components](#136-ui-components)
+    - [Animation & Micro-interactions](#137-animation--micro-interactions)
+    - [Copy Tone Guidelines](#138-copy-tone-guidelines)
+14. [API Reference](#14-api-reference)
+15. [Project Architecture](#15-project-architecture)
+16. [Troubleshooting](#16-troubleshooting)
+17. [Changelog](#17-changelog)
 
 ---
 
@@ -2905,7 +2914,328 @@ This is **ritual** — turning transaction into moment.
 
 ---
 
-## 13. API Reference
+## 13. Gentle Suggestions (v1.10.0)
+
+*Commit: `feat: Add gentle author and word spelling suggestions`*
+
+### 13.1 Overview
+
+Contexta now provides **gentle suggestions** for author names and word spellings. The philosophy is assistance that whispers, never shouts — like a pencil correcting spelling in the margin, not Google shouting results at you.
+
+### 13.2 Core Principle
+
+Contexta should **assist silently**, not interrupt.
+
+Suggestions feel like:
+- ✅ A pencil correcting spelling in the margin
+- ❌ NOT Google shouting results at you
+
+**Key Guidelines:**
+- Max 3 suggestions at a time
+- No dropdown covering the screen
+- No red error indicators
+- No aggressive autocomplete
+- Disappear when not needed
+
+---
+
+### 13.3 Author Name Suggestions
+
+#### Why This Makes Sense
+
+Readers often:
+- Misspell names (Dostoyevsky vs Dostoevsky)
+- Partially remember authors
+- Use initials or surnames
+
+Clean author names improve:
+- Context quality later (AI explanations)
+- Visual polish in library
+- Data consistency
+
+#### UX Behavior
+
+**Trigger:** After **2+ characters** typed in Author field
+
+**Display:** Small suggestion strip appears *below* the field
+
+**Max Suggestions:** 3
+
+**Example:**
+
+```
+George Or…
+────────────
+George Orwell
+George Eliot
+George Bernard Shaw
+```
+
+**Selection:**
+- Tap suggestion → fills author field
+- Suggestions disappear immediately
+- Cursor moves to end
+- No confirmation message
+
+It should feel *invisible when correct*.
+
+#### Suggestion Sources (Prioritized)
+
+1. **Previously used authors** (learns from user)
+2. **Curated literary authors** (500+ classic authors)
+
+No API calls needed — fully offline.
+
+---
+
+### 13.4 Word Spelling Suggestions
+
+#### Why This Is Critical
+
+Readers often:
+- Misspell unfamiliar words
+- Type phonetically
+- Get rejected by API or dictionary
+
+A spelling suggestion saves frustration.
+
+#### UX Behavior
+
+**Trigger:** 
+- User pauses for **400ms** after typing
+- NOT while typing fast
+
+**Display:** Soft inline suggestion below word input
+
+```
+Did you mean ineffable?
+```
+
+- Italic text
+- Muted color
+- Only the suggested word is clickable
+
+**Acceptance:**
+- Tap suggested word
+- Input updates
+- Explanation proceeds automatically
+
+**No red errors. No blocking dialogs.**
+
+Feels like a gentle correction, not a warning.
+
+---
+
+### 13.5 Services
+
+#### AuthorSuggestionService
+
+**Location:** `lib/services/author_suggestion_service.dart`
+
+```dart
+class AuthorSuggestionService {
+  /// Get suggestions for author name
+  /// Returns max 3 suggestions, prioritizing previously used authors
+  Future<List<String>> getSuggestions(String query);
+  
+  /// Record an author as used (for future prioritization)
+  Future<void> recordAuthor(String author);
+}
+```
+
+**Curated Authors:** 130+ literary authors including:
+- Classic Literature (Dostoevsky, Austen, Dickens, Tolstoy)
+- American Literature (Hemingway, Faulkner, Morrison)
+- British Modern (Orwell, Huxley, Ishiguro)
+- World Literature (García Márquez, Borges, Murakami)
+- Philosophy (Nietzsche, Kierkegaard, Arendt)
+- Poetry (Eliot, Dickinson, Rilke)
+- Contemporary (Atwood, Ferrante, Rooney)
+
+#### SpellingSuggestionService
+
+**Location:** `lib/services/spelling_suggestion_service.dart`
+
+```dart
+class SpellingSuggestionService {
+  /// Get spelling suggestion for a potentially misspelled word
+  /// Returns null if word appears correct or no close match found
+  String? getSuggestion(String word);
+}
+```
+
+**Algorithm:** Levenshtein distance with dynamic threshold:
+- Short words (3-4 chars): max 1 edit
+- Medium words (5-8 chars): max 2 edits
+- Long words (9+ chars): max 3-4 edits
+
+**Word List:** 500+ challenging vocabulary words commonly looked up in literature.
+
+---
+
+### 13.6 UI Components
+
+#### SuggestionStrip
+
+**Location:** `lib/widgets/suggestion_strip.dart`
+
+A gentle suggestion strip that appears below input fields.
+
+```dart
+SuggestionStrip(
+  suggestions: ['George Orwell', 'George Eliot', 'George Bernard Shaw'],
+  onSelect: (author) => _handleAuthorSelect(author),
+  isVisible: true,
+)
+```
+
+**Visual Style:**
+- Same background as paper cards
+- Rounded corners (12px)
+- Thin divider between items
+- Serif text for names
+- Muted until hovered/tapped
+
+**Animation:**
+- Fade + slight slide up
+- Duration: 150ms
+- Curve: easeOut
+- Disappears instantly on selection
+
+#### SpellingSuggestion
+
+**Location:** `lib/widgets/spelling_suggestion.dart`
+
+A gentle inline spelling suggestion widget.
+
+```dart
+SpellingSuggestion(
+  suggestion: 'ineffable',
+  onAccept: () => _acceptSuggestion(),
+  isVisible: !_isLoading,
+)
+```
+
+**Displays as:**
+
+*Did you mean **ineffable**?*
+
+- Italic text for "Did you mean"
+- Bold/clickable for suggestion
+- Subtle color (ink blue)
+- Underline on hover
+
+---
+
+### 13.7 Animation & Micro-interactions
+
+#### Suggestion Appearance
+- **Animation:** Fade + slight slide up
+- **Duration:** 150ms
+- **Curve:** easeOut
+- **No bounce** (maintains literary dignity)
+
+#### Disappearance
+- **Fade out instantly** on selection
+- **No lingering UI**
+
+#### Haptic Feedback
+- `HapticFeedback.selectionClick()` on selection
+
+---
+
+### 13.8 Copy Tone Guidelines
+
+#### ✅ Correct Tone
+- "Did you mean…"
+- "Possible match"
+- "Closest word"
+
+#### ❌ Wrong Tone
+- "Incorrect spelling"
+- "Error"
+- "No results found"
+- "Invalid input"
+
+**Contexta must never shame the reader.**
+
+---
+
+### 13.9 When Suggestions Stay Silent
+
+Do **not** suggest if:
+- User deliberately typed a variant
+- Word exists but is rare
+- Author is uncommon but valid
+- Input is too short (< 2 chars for author, < 3 chars for word)
+
+**False confidence damages trust.**
+
+---
+
+### 13.10 Integration Points
+
+#### AddBookPanel
+
+```dart
+// Author field with suggestions
+ContextaTextField(
+  label: 'Author (optional)',
+  value: _author,
+  onChanged: _handleAuthorChange,
+),
+SuggestionStrip(
+  suggestions: _authorSuggestions,
+  onSelect: _handleAuthorSuggestionSelect,
+  isVisible: _showAuthorSuggestions,
+),
+```
+
+#### BookDetailScreen
+
+```dart
+// Word input with spelling suggestion
+ContextaTextField(
+  placeholder: 'Enter a word you paused at',
+  value: _wordController.text,
+  onChanged: _handleWordChange,
+),
+SpellingSuggestion(
+  suggestion: _spellingSuggestion,
+  onAccept: _acceptSpellingSuggestion,
+  isVisible: !_isLoading,
+),
+```
+
+---
+
+### 13.11 Why This Feature Adds Value Without Complexity
+
+- ✅ Reduces friction
+- ✅ Improves data quality
+- ✅ Helps AI later
+- ✅ Makes app feel intelligent
+- ✅ Zero visual clutter if done right
+
+Most importantly:
+
+> It disappears when not needed
+
+---
+
+### 13.12 How This Fits Contexta's Identity
+
+This is not "search".
+This is **assistance**.
+
+The app feels like:
+- A careful reader sitting beside you
+- Occasionally whispering a correction
+- Never interrupting your flow
+
+---
+
+## 14. API Reference
 
 ### PerplexityService
 
@@ -2962,7 +3292,7 @@ ExplanationLevel loadExplanationLevel();
 
 ---
 
-## 14. Project Architecture
+## 15. Project Architecture
 
 ### High-Level Architecture
 
@@ -3078,7 +3408,7 @@ class _MyAppState extends State<MyApp> {
 
 ---
 
-## 15. Troubleshooting
+## 16. Troubleshooting
 
 ### Common Issues
 
@@ -3243,9 +3573,62 @@ dependencies:
 
 ---
 
-## 16. Changelog
+## 17. Changelog
 
 All notable changes to Contexta are documented here.
+
+### [1.10.0] - 2026-01-31
+
+#### Feature - Gentle Suggestions (Author & Word)
+*Commit: feat: Add gentle author and word spelling suggestions*
+
+- **AuthorSuggestionService**
+  - Curated list of 130+ literary authors
+  - Previously used authors prioritized
+  - Fuzzy matching by word start
+  - Persisted via SharedPreferences
+  - Max 3 suggestions returned
+
+- **SpellingSuggestionService**
+  - 500+ challenging vocabulary words
+  - Levenshtein distance algorithm
+  - Dynamic edit distance threshold
+  - Returns single best match or null
+
+- **SuggestionStrip Widget**
+  - Appears below author input field
+  - Triggers after 2+ characters
+  - Max 3 suggestions displayed
+  - Fade + slide up animation (150ms)
+  - Literary styling (serif, muted colors)
+  - Disappears instantly on selection
+
+- **SpellingSuggestion Widget**
+  - Inline "Did you mean X?" format
+  - Triggers after 400ms pause
+  - Italic text, clickable word only
+  - Auto-proceeds with explanation on tap
+  - Never shames the reader
+
+- **AddBookPanel Integration**
+  - Author suggestions below author field
+  - Records used authors for learning
+  - Haptic feedback on selection
+
+- **BookDetailScreen Integration**
+  - Spelling suggestion below word input
+  - Debounced 400ms after typing stops
+  - Clears on explanation start
+  - Auto-explain on suggestion accept
+
+- **Design Philosophy**
+  - Assist silently, never interrupt
+  - Feels like pencil in margin
+  - No dropdown spam
+  - No red error indicators
+  - Disappears when not needed
+
+---
 
 ### [1.9.0] - 2026-01-30
 
@@ -3768,10 +4151,13 @@ lib/
 │   ├── connectivity_service.dart     # Network status (v1.1.0)
 │   ├── perplexity_service.dart       # AI API integration
 │   ├── storage_service.dart          # SharedPreferences
+│   ├── author_suggestion_service.dart   # Author suggestions (v1.10.0)
+│   ├── spelling_suggestion_service.dart # Word spelling (v1.10.0)
 │   └── word_explanation_cache_service.dart  # LRU cache (v1.1.0)
 ├── theme/
 │   └── app_theme.dart                # Design tokens, colors
 └── widgets/
+    ├── add_book_panel.dart           # Shelf book form (v1.9.0)
     ├── book_card.dart                # Library book cards
     ├── contexta_app_bar.dart         # Custom app bar
     ├── contexta_bottom_sheet.dart    # Modal sheets
@@ -3782,6 +4168,9 @@ lib/
     ├── logo.dart                     # Brand logo
     ├── primary_button.dart           # Primary CTA
     ├── secondary_button.dart         # Secondary actions
+    ├── shelf_overlay.dart            # Shelf animation (v1.9.0)
+    ├── spelling_suggestion.dart      # Word spelling hint (v1.10.0)
+    ├── suggestion_strip.dart         # Author suggestions (v1.10.0)
     ├── word_explanation_sheet.dart   # Word detail modal
     ├── word_frequency_card.dart      # Challenging words card (v1.2.0)
     └── word_list_item.dart           # Word list rows
@@ -3826,6 +4215,6 @@ dev_dependencies:
 
 ---
 
-*This documentation covers Contexta from initial release through v1.1.0. For the latest updates, refer to the git commit history.*
+*This documentation covers Contexta from initial release through v1.10.0. For the latest updates, refer to the git commit history.*
 
-*Last updated: January 30, 2026*
+*Last updated: January 31, 2026*

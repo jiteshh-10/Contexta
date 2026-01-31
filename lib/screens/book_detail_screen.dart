@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../models/book.dart';
@@ -14,9 +15,11 @@ import '../widgets/contexta_bottom_sheet.dart';
 import '../widgets/explanation_level_selector.dart';
 import '../widgets/word_frequency_card.dart';
 import '../widgets/export_options_sheet.dart';
+import '../widgets/spelling_suggestion.dart';
 import '../services/perplexity_service.dart';
 import '../services/storage_service.dart';
 import '../services/reading_streak_service.dart';
+import '../services/spelling_suggestion_service.dart';
 
 /// Sort options for word collection
 enum SortOption {
@@ -52,12 +55,18 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
   final FocusNode _wordFocusNode = FocusNode();
   final PerplexityService _perplexityService = PerplexityService();
   final StorageService _storageService = StorageService();
+  final SpellingSuggestionService _spellingService =
+      SpellingSuggestionService();
 
   bool _isLoading = false;
   String? _errorMessage;
   SortOption _sortOption = SortOption.recent;
   ExplanationLevel _explanationLevel = ExplanationLevel.simple;
   bool _isFrequencyExpanded = false;
+
+  // Spelling suggestion state
+  String? _spellingSuggestion;
+  Timer? _spellingDebounceTimer;
 
   @override
   void initState() {
@@ -85,6 +94,7 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
   void dispose() {
     _wordController.dispose();
     _wordFocusNode.dispose();
+    _spellingDebounceTimer?.cancel();
     super.dispose();
   }
 
@@ -114,16 +124,58 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
     return words;
   }
 
+  /// Handle word input change with debounced spelling check
+  void _handleWordChange(String value) {
+    setState(() {
+      _wordController.text = value;
+    });
+
+    // Cancel previous timer
+    _spellingDebounceTimer?.cancel();
+
+    // Clear suggestion if input is too short
+    if (value.trim().length < 3) {
+      setState(() => _spellingSuggestion = null);
+      return;
+    }
+
+    // Debounce spelling check - wait 400ms after user stops typing
+    _spellingDebounceTimer = Timer(const Duration(milliseconds: 400), () {
+      if (mounted) {
+        final suggestion = _spellingService.getSuggestion(value.trim());
+        setState(() => _spellingSuggestion = suggestion);
+      }
+    });
+  }
+
+  /// Accept spelling suggestion
+  void _acceptSpellingSuggestion() {
+    if (_spellingSuggestion == null) return;
+
+    setState(() {
+      _wordController.text = _spellingSuggestion!;
+      _spellingSuggestion = null;
+    });
+
+    // Light haptic feedback
+    HapticFeedback.selectionClick();
+
+    // Proceed with explanation
+    _explainWord();
+  }
+
   /// Handle word explanation using Perplexity API
   void _explainWord() async {
     final word = _wordController.text.trim();
     if (word.isEmpty) return;
 
-    // Clear any previous error
+    // Clear spelling suggestion and any previous error
     setState(() {
       _errorMessage = null;
       _isLoading = true;
+      _spellingSuggestion = null;
     });
+    _spellingDebounceTimer?.cancel();
 
     // Haptic feedback
     HapticFeedback.lightImpact();
@@ -453,7 +505,7 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
           ContextaTextField(
             placeholder: 'Enter a word you paused at',
             value: _wordController.text,
-            onChanged: (v) => setState(() => _wordController.text = v),
+            onChanged: _handleWordChange,
             onSubmitted:
                 !_isLoading && _wordController.text.trim().isNotEmpty
                     ? _explainWord
@@ -461,6 +513,13 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
             disabled: _isLoading,
             focusNode: _wordFocusNode,
             textInputAction: TextInputAction.done,
+          ),
+
+          // Spelling suggestion (gentle inline)
+          SpellingSuggestion(
+            suggestion: _spellingSuggestion,
+            onAccept: _acceptSpellingSuggestion,
+            isVisible: !_isLoading,
           ),
 
           const SizedBox(height: 16),

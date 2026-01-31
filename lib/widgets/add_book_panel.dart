@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../theme/app_theme.dart';
+import '../services/author_suggestion_service.dart';
 import 'contexta_text_field.dart';
 import 'primary_button.dart';
+import 'suggestion_strip.dart';
 
 /// Add book panel that appears when shelf expands
 /// This is not a screen - it's content that lives "under" the shelf
@@ -32,6 +34,11 @@ class AddBookPanelState extends State<AddBookPanel>
   String _author = '';
   String? _titleError;
   bool _isPlacing = false;
+
+  // Author suggestions
+  final AuthorSuggestionService _authorService = AuthorSuggestionService();
+  List<String> _authorSuggestions = [];
+  bool _showAuthorSuggestions = true;
 
   // Key for the preview card to get its position
   final GlobalKey _previewCardKey = GlobalKey();
@@ -88,6 +95,37 @@ class AddBookPanelState extends State<AddBookPanel>
 
   void _handleAuthorChange(String value) {
     setState(() => _author = value);
+    _updateAuthorSuggestions(value);
+  }
+
+  /// Update author suggestions based on current input
+  Future<void> _updateAuthorSuggestions(String query) async {
+    if (query.length < 2) {
+      setState(() {
+        _authorSuggestions = [];
+        _showAuthorSuggestions = true;
+      });
+      return;
+    }
+
+    final suggestions = await _authorService.getSuggestions(query);
+    if (mounted) {
+      setState(() {
+        _authorSuggestions = suggestions;
+        _showAuthorSuggestions = true;
+      });
+    }
+  }
+
+  /// Handle author suggestion selection
+  void _handleAuthorSuggestionSelect(String author) {
+    setState(() {
+      _author = author;
+      _authorSuggestions = [];
+      _showAuthorSuggestions = false;
+    });
+    // Light haptic feedback
+    HapticFeedback.selectionClick();
   }
 
   void _handlePlaceOnShelf() {
@@ -110,9 +148,19 @@ class AddBookPanelState extends State<AddBookPanel>
 
       setState(() => _isPlacing = true);
 
+      // Record author for future suggestions
+      if (_author.trim().isNotEmpty) {
+        _authorService.recordAuthor(_author.trim());
+      }
+
       // Trigger the placement animation
       widget.onPlaceOnShelf(_title.trim(), _author.trim(), position, size);
     } else {
+      // Record author for future suggestions
+      if (_author.trim().isNotEmpty) {
+        _authorService.recordAuthor(_author.trim());
+      }
+
       // Fallback if we can't get position
       widget.onPlaceOnShelf(
         _title.trim(),
@@ -214,7 +262,7 @@ class AddBookPanelState extends State<AddBookPanel>
 
                     const SizedBox(height: 16),
 
-                    // Author field
+                    // Author field with suggestions
                     ContextaTextField(
                       label: 'Author (optional)',
                       placeholder: "Enter the author's name",
@@ -222,6 +270,13 @@ class AddBookPanelState extends State<AddBookPanel>
                       onChanged: _handleAuthorChange,
                       onSubmitted: _canSave ? _handlePlaceOnShelf : null,
                       textInputAction: TextInputAction.done,
+                    ),
+
+                    // Author suggestions strip
+                    SuggestionStrip(
+                      suggestions: _authorSuggestions,
+                      onSelect: _handleAuthorSuggestionSelect,
+                      isVisible: _showAuthorSuggestions,
                     ),
 
                     const SizedBox(height: 20),
