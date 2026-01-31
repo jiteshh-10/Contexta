@@ -130,7 +130,7 @@ class ExportService {
       '───────────────────────────────────────────────────────────',
     );
     buffer.writeln('Exported from Contexta');
-    buffer.writeln('${DateTime.now().toString().split('.')[0]}');
+    buffer.writeln(DateTime.now().toString().split('.')[0]);
 
     return buffer.toString();
   }
@@ -193,7 +193,7 @@ class ExportService {
       '───────────────────────────────────────────────────────────',
     );
     buffer.writeln('Exported from Contexta');
-    buffer.writeln('${DateTime.now().toString().split('.')[0]}');
+    buffer.writeln(DateTime.now().toString().split('.')[0]);
 
     return buffer.toString();
   }
@@ -339,7 +339,7 @@ class ExportService {
     if (book != null) {
       buffer.writeln('📄 PDF Export');
       buffer.writeln();
-      buffer.writeln('${book.title}');
+      buffer.writeln(book.title);
       buffer.writeln('by ${book.author}');
       buffer.writeln();
       buffer.writeln('${book.wordCount} words will be exported as a');
@@ -606,7 +606,7 @@ class ExportService {
               pw.Text(word.explanation, style: explanationStyle),
               if (word.difficultyReason != null) ...[
                 pw.SizedBox(height: 4),
-                pw.Text('${word.difficultyReason!.label}', style: badgeStyle),
+                pw.Text(word.difficultyReason!.label, style: badgeStyle),
               ],
               if (word.lookupCount > 1) ...[
                 pw.SizedBox(height: 4),
