@@ -121,16 +121,18 @@ class BookSuggestionService {
       final systemPrompt =
           '''You are a thoughtful librarian helping a reader discover their next book.
 
-Based on the reader's library, suggest exactly 3 books they might enjoy.
+Based on the reader's COMPLETE library (analyze ALL books listed, not just one), suggest exactly 3 books they might enjoy.
 
 IMPORTANT RULES:
 1. Never suggest books already in their library
-2. Each suggestion must include a clear, personal reason
-3. Reasons should reference their reading patterns or themes
-4. Use phrases like "You might enjoy...", "Similar in tone to...", "Often read after..."
-5. Never use terms like "recommended", "top pick", "trending", "AI-powered"
-6. Keep reasons to one thoughtful sentence
-7. Focus on literary merit and thematic connections
+2. Consider the ENTIRE library - look for patterns across ALL books
+3. Each suggestion must include a clear, personal reason
+4. Reasons should reference their reading patterns, themes, or author preferences
+5. Use phrases like "You might enjoy...", "Similar in tone to...", "Often read after...", "Given your interest in..."
+6. Never use terms like "recommended", "top pick", "trending", "AI-powered"
+7. Keep reasons to one thoughtful sentence
+8. Focus on literary merit and thematic connections across their whole collection
+9. Suggest DIFFERENT books each time - vary your recommendations
 
 Respond ONLY with valid JSON in this exact format:
 {
@@ -142,14 +144,16 @@ Respond ONLY with valid JSON in this exact format:
 }''';
 
       final userPrompt =
-          '''Based on this reader's library, suggest 3 thoughtful book recommendations:
+          '''Based on this reader's COMPLETE library, suggest 3 thoughtful book recommendations:
 
 $context
 
 Remember: 
+- Analyze ALL books in their library, not just the first one
 - Don't suggest any books already listed above
-- Each reason should feel personal and reference their reading
-- Sound like a librarian, not an algorithm''';
+- Each reason should feel personal and reference their reading patterns
+- Sound like a librarian, not an algorithm
+- These should be FRESH suggestions different from previous ones''';
 
       final requestBody = jsonEncode({
         'model': ApiConfig.perplexityModel,
@@ -158,7 +162,8 @@ Remember:
           {'role': 'user', 'content': userPrompt},
         ],
         'max_tokens': 500,
-        'temperature': 0.7,
+        'temperature':
+            forceRefresh ? 0.9 : 0.7, // Higher temp for variety on refresh
       });
 
       final response = await _client
@@ -215,27 +220,56 @@ Remember:
   /// Build reading context from books
   String _buildReadingContext(List<Book> books) {
     final buffer = StringBuffer();
-    buffer.writeln('READER\'S LIBRARY:');
+    buffer.writeln('READER\'S COMPLETE LIBRARY (${books.length} books):');
+    buffer.writeln('');
 
-    for (final book in books) {
-      buffer.writeln('- "${book.title}" by ${book.author}');
+    // List all books with their authors
+    for (var i = 0; i < books.length; i++) {
+      final book = books[i];
+      buffer.writeln('${i + 1}. "${book.title}" by ${book.author}');
 
       // Add word themes if available (limited to show patterns)
       if (book.words.isNotEmpty) {
         final words = book.words.take(5).map((w) => w.word).join(', ');
-        buffer.writeln('  (Words explored: $words)');
+        buffer.writeln('   Words explored: $words');
       }
     }
 
-    // Add some reading pattern insights
-    final authors = books.map((b) => b.author).toSet();
-    if (authors.length < books.length) {
-      buffer.writeln('\nNote: Reader has multiple books by the same author.');
+    buffer.writeln('');
+    buffer.writeln('READING PATTERNS:');
+
+    // Author analysis
+    final authorCounts = <String, int>{};
+    for (final book in books) {
+      authorCounts[book.author] = (authorCounts[book.author] ?? 0) + 1;
     }
 
+    final favoriteAuthors =
+        authorCounts.entries
+            .where((e) => e.value > 1)
+            .map((e) => '${e.key} (${e.value} books)')
+            .toList();
+
+    if (favoriteAuthors.isNotEmpty) {
+      buffer.writeln('- Favorite authors: ${favoriteAuthors.join(', ')}');
+    }
+
+    // Word exploration level
     final totalWords = books.fold(0, (sum, b) => sum + b.wordCount);
-    if (totalWords > 20) {
-      buffer.writeln('Note: Reader actively explores vocabulary.');
+    if (totalWords > 50) {
+      buffer.writeln(
+        '- Very active vocabulary explorer ($totalWords words saved)',
+      );
+    } else if (totalWords > 20) {
+      buffer.writeln('- Active vocabulary explorer ($totalWords words saved)');
+    } else if (totalWords > 0) {
+      buffer.writeln('- Casual vocabulary explorer ($totalWords words saved)');
+    }
+
+    // Recent additions (last 3)
+    if (books.length > 3) {
+      final recent = books.take(3).map((b) => '"${b.title}"').join(', ');
+      buffer.writeln('- Recently added: $recent');
     }
 
     return buffer.toString();

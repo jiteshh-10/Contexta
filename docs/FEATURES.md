@@ -3596,6 +3596,19 @@ Suggestions refresh **only when**:
 1. User explicitly taps refresh icon
 2. OR a new book is added to shelf
 
+**Refresh Guarantees Different Suggestions:**
+- Uses higher AI temperature (0.9 vs 0.7) for variety
+- Clears current suggestions before fetching new
+- Passes `forceRefresh: true` to service
+- Never returns cached results on manual refresh
+
+**Enhanced Context Building:**
+- Uses ALL books in library (not just top few)
+- Includes numbered list of entire collection
+- Analyzes favorite authors by frequency
+- Tracks word exploration level per book
+- Notes recent additions
+
 **Never:**
 - Auto-refresh
 - Show "new suggestions" badges
@@ -3986,6 +3999,12 @@ All notable changes to Contexta are documented here.
   - Max 3 thoughtful suggestions
   - Filters out books already on shelf
   - Connectivity-aware caching
+  - **Enhanced reading context** with:
+    - Numbered list of ALL books in library
+    - Favorite authors analysis
+    - Word exploration patterns
+    - Recent additions tracking
+  - **Force refresh** with higher temperature (0.9) for variety
 
 - **BookSuggestion Model**
   - Title, author, reason fields
@@ -3997,6 +4016,7 @@ All notable changes to Contexta are documented here.
   - Empty shelf state with explanation
   - Personalized suggestions state
   - Refresh button with rotation animation
+  - **Refresh forces genuinely different suggestions**
 
 - **EmptyShelfSuggestions Widget**
   - Calm explanation of absence
@@ -4014,6 +4034,22 @@ All notable changes to Contexta are documented here.
   - Open book icon in top-right
   - Tooltip: "Reading suggestions"
   - Same priority as settings icon
+
+#### Improved - Apple-Style Animations
+
+- **ShelfOverlay Flying Book Animation**
+  - Faster 350ms duration (was 500ms)
+  - `Curves.decelerate` for iOS-style motion
+  - Direct linear path (no arc)
+  - Simple scale: 1.02 → 1.0 with settle bounce
+  - 80ms hold at destination before disappearing
+  - Fixed floating-point precision error
+
+- **Book Landing Highlight**
+  - Replaced yellow glow with Apple-style scale animation
+  - Clean scale pulse: 0.97 → 1.02 → 1.0
+  - No color artifacts, pure motion
+  - Production-grade feel
 
 ---
 

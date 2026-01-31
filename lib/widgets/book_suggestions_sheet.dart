@@ -46,7 +46,7 @@ class _BookSuggestionsSheetState extends State<BookSuggestionsSheet> {
     }
   }
 
-  Future<void> _loadSuggestions() async {
+  Future<void> _loadSuggestions({bool forceRefresh = false}) async {
     if (!mounted) return;
 
     setState(() {
@@ -54,7 +54,10 @@ class _BookSuggestionsSheetState extends State<BookSuggestionsSheet> {
       _error = null;
     });
 
-    final result = await _suggestionService.getSuggestions(books: widget.books);
+    final result = await _suggestionService.getSuggestions(
+      books: widget.books,
+      forceRefresh: forceRefresh,
+    );
 
     if (!mounted) return;
 
@@ -66,6 +69,15 @@ class _BookSuggestionsSheetState extends State<BookSuggestionsSheet> {
         _error = result.error;
       }
     });
+  }
+
+  /// Refresh suggestions with force refresh to get new ones
+  Future<void> _refreshSuggestions() async {
+    // Clear existing suggestions first for visual feedback
+    setState(() {
+      _suggestions = [];
+    });
+    await _loadSuggestions(forceRefresh: true);
   }
 
   void _handleAddToShelf(BookSuggestion suggestion) {
@@ -155,7 +167,7 @@ class _BookSuggestionsSheetState extends State<BookSuggestionsSheet> {
 
           // Refresh button (only when has books and not loading)
           if (widget.books.isNotEmpty && !_isLoading && _error == null)
-            _RefreshButton(onTap: _loadSuggestions),
+            _RefreshButton(onTap: _refreshSuggestions),
         ],
       ),
     );

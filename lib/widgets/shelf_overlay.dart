@@ -122,10 +122,10 @@ class ShelfOverlayState extends State<ShelfOverlay>
       end: 0.08,
     ).animate(CurvedAnimation(parent: _shelfController, curve: Curves.easeOut));
 
-    // Book placement animation (440ms for snappy feel)
+    // Book placement animation - Apple-style (350ms, quick but smooth)
     _bookPlacementController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 440),
+      duration: const Duration(milliseconds: 350),
     );
 
     _shelfController.addStatusListener(_onShelfAnimationStatus);
@@ -188,7 +188,10 @@ class ShelfOverlayState extends State<ShelfOverlay>
     HapticFeedback.lightImpact();
 
     // Start the placement animation
-    _bookPlacementController.forward(from: 0).then((_) {
+    _bookPlacementController.forward(from: 0).then((_) async {
+      // Hold for a moment at destination for visual confirmation
+      await Future.delayed(const Duration(milliseconds: 80));
+
       // Tiny settle haptic when book lands
       HapticFeedback.selectionClick();
 
@@ -286,128 +289,117 @@ class ShelfOverlayState extends State<ShelfOverlay>
       return const SizedBox.shrink();
     }
 
-    // Animation curve: ease out with slight deceleration at end
-    final progress = Curves.easeOutCubic.transform(
-      _bookPlacementController.value,
-    );
+    // Clamp the raw value to prevent floating-point precision errors
+    final t = _bookPlacementController.value.clamp(0.0, 1.0);
 
-    // Position interpolation with slight diagonal feel
+    // Apple-style curve: fast start, gentle deceleration (like iOS spring)
+    final progress = Curves.decelerate.transform(t);
+
+    // Simple linear position interpolation - direct movement
     final currentX =
         _bookStartPosition!.dx +
         (_bookEndPosition!.dx - _bookStartPosition!.dx) * progress;
-
-    // Y movement with pronounced arc for visibility
-    final baseY =
+    final currentY =
         _bookStartPosition!.dy +
         (_bookEndPosition!.dy - _bookStartPosition!.dy) * progress;
-    // More pronounced arc - peaks at middle, creates clear upward motion
-    final arcOffset = -50 * (1 - (2 * progress - 1) * (2 * progress - 1));
-    final currentY = baseY + arcOffset;
 
-    // Scale: more pronounced lift at start (1.05), travel (0.96), settle (1.0)
+    // Apple-style scale with subtle settle bounce at the end
+    // Travel at 1.02, then settle with tiny bounce (1.0 → 0.98 → 1.0)
     double scale;
-    if (progress < 0.12) {
-      // Lift phase - more noticeable
-      scale = 1.0 + (0.05 * (progress / 0.12));
-    } else if (progress < 0.88) {
-      // Travel phase - tighter compression
-      scale = 1.05 - (0.09 * ((progress - 0.12) / 0.76));
+    if (t < 0.85) {
+      // Travel phase - slight lift
+      scale = 1.0 + (0.02 * (1 - (t / 0.85)));
     } else {
-      // Settle phase - gentle landing
-      final settleProgress = (progress - 0.88) / 0.12;
-      scale = 0.96 + (0.04 * settleProgress);
+      // Settle phase - tiny bounce (like iOS list insertion)
+      final settleT = (t - 0.85) / 0.15;
+      // Quick compress then expand: 1.0 → 0.98 → 1.0
+      scale = 1.0 - (0.02 * (1 - settleT).abs());
     }
 
-    // Shadow elevation - more pronounced during flight
-    final elevation = progress < 0.88 ? 12.0 * (1 - progress * 0.7) : 2.0;
+    // Shadow stays subtle throughout, slight increase when landing
+    final shadowOpacity = t > 0.85 ? 0.15 : 0.10;
+
+    // Stay fully visible - no fade out, clean handoff to real card
+    const opacity = 1.0;
 
     final isDark = AppTheme.isDark(context);
 
     return Positioned(
       left: currentX,
       top: currentY,
-      child: Transform.scale(
-        scale: scale,
-        child: Container(
-          width: _bookSize?.width ?? 300,
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            color: isDark ? AppTheme.darkPaper : AppTheme.paper,
-            borderRadius: BorderRadius.circular(AppTheme.radiusLarge),
-            border:
-                isDark
-                    ? Border.all(color: AppTheme.darkBorderSubtle, width: 0.5)
-                    : null,
-            boxShadow:
-                isDark
-                    ? [
-                      // Subtle glow in dark mode
-                      BoxShadow(
-                        color: Colors.black.withValues(
-                          alpha: 0.15 + (elevation * 0.015),
-                        ),
-                        blurRadius: elevation * 1.5,
-                        spreadRadius: 2,
-                      ),
-                    ]
-                    : [
-                      // More dramatic shadow in light mode
-                      BoxShadow(
-                        color: AppTheme.charcoal.withValues(
-                          alpha: 0.12 + (elevation * 0.025),
-                        ),
-                        blurRadius: elevation * 2.5,
-                        offset: Offset(0, elevation / 3),
-                      ),
-                    ],
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                _flyingBookTitle,
-                style: TextStyle(
-                  fontFamily: 'Serif',
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
-                  color: AppTheme.getTextPrimary(context),
-                ),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-              ),
-              if (_flyingBookAuthor.isNotEmpty) ...[
-                const SizedBox(height: 4),
-                Text(
-                  'by $_flyingBookAuthor',
-                  style: TextStyle(
-                    fontFamily: 'Inter',
-                    fontSize: 14,
-                    fontStyle: FontStyle.italic,
-                    color: AppTheme.getTextSecondary(context),
+      child: Opacity(
+        opacity: opacity,
+        child: Transform.scale(
+          scale: scale,
+          child: Container(
+            width: _bookSize?.width ?? 300,
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: isDark ? AppTheme.darkPaper : AppTheme.paper,
+              borderRadius: BorderRadius.circular(AppTheme.radiusLarge),
+              border:
+                  isDark
+                      ? Border.all(color: AppTheme.darkBorderSubtle, width: 0.5)
+                      : null,
+              // Apple-style subtle shadow - soft, diffused
+              boxShadow: [
+                BoxShadow(
+                  color: (isDark ? Colors.black : AppTheme.charcoal).withValues(
+                    alpha: shadowOpacity,
                   ),
+                  blurRadius: 16,
+                  offset: const Offset(0, 4),
                 ),
               ],
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  Icon(
-                    Icons.auto_stories_outlined,
-                    size: 14,
-                    color: AppTheme.getTextMuted(context),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  _flyingBookTitle,
+                  style: TextStyle(
+                    fontFamily: 'Serif',
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                    color: AppTheme.getTextPrimary(context),
                   ),
-                  const SizedBox(width: 4),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                if (_flyingBookAuthor.isNotEmpty) ...[
+                  const SizedBox(height: 4),
                   Text(
-                    '0 words',
+                    'by $_flyingBookAuthor',
                     style: TextStyle(
                       fontFamily: 'Inter',
-                      fontSize: 12,
-                      color: AppTheme.getTextMuted(context),
+                      fontSize: 14,
+                      fontStyle: FontStyle.italic,
+                      color: AppTheme.getTextSecondary(context),
                     ),
                   ),
                 ],
-              ),
-            ],
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Icon(
+                      Icons.auto_stories_outlined,
+                      size: 14,
+                      color: AppTheme.getTextMuted(context),
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      '0 words',
+                      style: TextStyle(
+                        fontFamily: 'Inter',
+                        fontSize: 12,
+                        color: AppTheme.getTextMuted(context),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
         ),
       ),

@@ -90,27 +90,27 @@ class _LibraryScreenState extends State<LibraryScreen>
       end: 0.95,
     ).animate(CurvedAnimation(parent: _fabController, curve: Curves.easeOut));
 
-    // Highlight animation for newly added book
+    // Highlight animation for newly added book - Apple-style scale pulse
     _highlightController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1000),
+      duration: const Duration(milliseconds: 600),
     );
 
+    // Apple-style: subtle scale up then settle (1.0 → 1.03 → 1.0)
     _highlightAnimation = TweenSequence<double>([
       TweenSequenceItem(
         tween: Tween(
-          begin: 0.0,
-          end: 1.0,
+          begin: 0.97,
+          end: 1.02,
         ).chain(CurveTween(curve: Curves.easeOut)),
-        weight: 25, // 250ms fade in
+        weight: 40, // Quick expand
       ),
-      TweenSequenceItem(tween: ConstantTween(1.0), weight: 35), // 350ms hold
       TweenSequenceItem(
         tween: Tween(
-          begin: 1.0,
-          end: 0.0,
-        ).chain(CurveTween(curve: Curves.easeIn)),
-        weight: 40, // 400ms fade out
+          begin: 1.02,
+          end: 1.0,
+        ).chain(CurveTween(curve: Curves.easeInOut)),
+        weight: 60, // Gentle settle
       ),
     ]).animate(_highlightController);
   }
@@ -517,21 +517,9 @@ class _LibraryScreenState extends State<LibraryScreen>
             builder: (context, child) {
               if (!isNewlyAdded) return child!;
 
-              // Highlight effect for newly added book - more visible
-              final highlightOpacity = _highlightAnimation.value * 0.25;
-              return Container(
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(AppTheme.radiusLarge + 4),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Theme.of(
-                        context,
-                      ).colorScheme.primary.withValues(alpha: highlightOpacity),
-                      blurRadius: 20,
-                      spreadRadius: 6,
-                    ),
-                  ],
-                ),
+              // Apple-style scale animation - no color effects
+              return Transform.scale(
+                scale: _highlightAnimation.value,
                 child: child,
               );
             },
