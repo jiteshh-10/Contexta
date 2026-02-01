@@ -430,49 +430,51 @@ class _ConflictOptionState extends State<_ConflictOption> {
       onTapUp: (_) => setState(() => _isPressed = false),
       onTapCancel: () => setState(() => _isPressed = false),
       onTap: widget.onTap,
-      child: AnimatedContainer(
+      child: AnimatedScale(
+        scale: _isPressed ? 0.98 : 1.0,
         duration: AppTheme.buttonPressDuration,
         curve: Curves.easeOut,
-        transform: Matrix4.identity()..scale(_isPressed ? 0.98 : 1.0),
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: backgroundColor,
-          borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
-          border: Border.all(
-            color: widget.isDark ? AppTheme.darkBorder : AppTheme.border,
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: backgroundColor,
+            borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
+            border: Border.all(
+              color: widget.isDark ? AppTheme.darkBorder : AppTheme.border,
+            ),
           ),
-        ),
-        child: Row(
-          children: [
-            Icon(widget.icon, color: widget.colorScheme.primary, size: 24),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    widget.title,
-                    style: TextStyle(
-                      fontFamily: 'Georgia',
-                      fontSize: 15,
-                      fontWeight: FontWeight.w500,
-                      color: widget.colorScheme.onSurface,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    widget.subtitle,
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: widget.colorScheme.onSurface.withValues(
-                        alpha: 0.6,
+          child: Row(
+            children: [
+              Icon(widget.icon, color: widget.colorScheme.primary, size: 24),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      widget.title,
+                      style: TextStyle(
+                        fontFamily: 'Georgia',
+                        fontSize: 15,
+                        fontWeight: FontWeight.w500,
+                        color: widget.colorScheme.onSurface,
                       ),
                     ),
-                  ),
-                ],
+                    const SizedBox(height: 2),
+                    Text(
+                      widget.subtitle,
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: widget.colorScheme.onSurface.withValues(
+                          alpha: 0.6,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

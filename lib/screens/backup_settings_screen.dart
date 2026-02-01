@@ -99,6 +99,7 @@ class _BackupSettingsScreenState extends State<BackupSettingsScreen> {
       }
       // If no cloud data, just enable backup going forward
 
+      if (!mounted) return;
       ContextaSnackbar.showSuccess(context, 'Signed in successfully');
       if (widget.onLibraryChanged != null) {
         await widget.onLibraryChanged!();
@@ -478,62 +479,64 @@ class _SettingsButtonState extends State<_SettingsButton> {
               ? null
               : () => setState(() => _isPressed = false),
       onTap: widget.onTap,
-      child: AnimatedContainer(
+      child: AnimatedScale(
+        scale: _isPressed ? 0.98 : 1.0,
         duration: AppTheme.buttonPressDuration,
         curve: Curves.easeOut,
-        transform: Matrix4.identity()..scale(_isPressed ? 0.98 : 1.0),
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: backgroundColor,
-          borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
-          border: Border.all(color: borderColor),
-        ),
-        child: Row(
-          children: [
-            if (widget.isLoading)
-              const SizedBox(
-                width: 24,
-                height: 24,
-                child: LoadingDots(compact: true),
-              )
-            else
-              Icon(widget.icon, color: iconColor, size: 24),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    widget.title,
-                    style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w500,
-                      color:
-                          widget.isDestructive
-                              ? iconColor
-                              : widget.colorScheme.onSurface,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    widget.subtitle,
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: widget.colorScheme.onSurface.withValues(
-                        alpha: 0.5,
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: backgroundColor,
+            borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
+            border: Border.all(color: borderColor),
+          ),
+          child: Row(
+            children: [
+              if (widget.isLoading)
+                const SizedBox(
+                  width: 24,
+                  height: 24,
+                  child: LoadingDots(compact: true),
+                )
+              else
+                Icon(widget.icon, color: iconColor, size: 24),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      widget.title,
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w500,
+                        color:
+                            widget.isDestructive
+                                ? iconColor
+                                : widget.colorScheme.onSurface,
                       ),
                     ),
-                  ),
-                ],
+                    const SizedBox(height: 2),
+                    Text(
+                      widget.subtitle,
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: widget.colorScheme.onSurface.withValues(
+                          alpha: 0.5,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
-            if (!widget.isLoading)
-              Icon(
-                Icons.arrow_forward_ios_rounded,
-                size: 16,
-                color: widget.colorScheme.onSurface.withValues(alpha: 0.3),
-              ),
-          ],
+              if (!widget.isLoading)
+                Icon(
+                  Icons.arrow_forward_ios_rounded,
+                  size: 16,
+                  color: widget.colorScheme.onSurface.withValues(alpha: 0.3),
+                ),
+            ],
+          ),
         ),
       ),
     );

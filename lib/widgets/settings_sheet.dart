@@ -202,11 +202,13 @@ class _SettingsToggleState extends State<_SettingsToggle> {
         decoration: BoxDecoration(
           color:
               _isPressed
-                  ? Theme.of(context).colorScheme.primary.withOpacity(0.05)
+                  ? Theme.of(
+                    context,
+                  ).colorScheme.primary.withValues(alpha: 0.05)
                   : Theme.of(context).colorScheme.surface,
           borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
           border: Border.all(
-            color: Theme.of(context).colorScheme.outline.withOpacity(0.1),
+            color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.1),
           ),
         ),
         child: Row(
@@ -285,11 +287,13 @@ class _SettingsActionState extends State<_SettingsAction> {
         decoration: BoxDecoration(
           color:
               _isPressed
-                  ? Theme.of(context).colorScheme.primary.withOpacity(0.05)
+                  ? Theme.of(
+                    context,
+                  ).colorScheme.primary.withValues(alpha: 0.05)
                   : Theme.of(context).colorScheme.surface,
           borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
           border: Border.all(
-            color: Theme.of(context).colorScheme.outline.withOpacity(0.1),
+            color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.1),
           ),
         ),
         child: Row(
@@ -367,11 +371,13 @@ class _SettingsNavigationState extends State<_SettingsNavigation> {
         decoration: BoxDecoration(
           color:
               _isPressed
-                  ? Theme.of(context).colorScheme.primary.withOpacity(0.05)
+                  ? Theme.of(
+                    context,
+                  ).colorScheme.primary.withValues(alpha: 0.05)
                   : Theme.of(context).colorScheme.surface,
           borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
           border: Border.all(
-            color: Theme.of(context).colorScheme.outline.withOpacity(0.1),
+            color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.1),
           ),
         ),
         child: Row(
@@ -410,7 +416,9 @@ class _SettingsNavigationState extends State<_SettingsNavigation> {
             const SizedBox(width: 8),
             Icon(
               Icons.arrow_forward_ios_rounded,
-              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.3),
+              color: Theme.of(
+                context,
+              ).colorScheme.onSurface.withValues(alpha: 0.3),
               size: 16,
             ),
           ],
