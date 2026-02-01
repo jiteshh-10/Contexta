@@ -33,6 +33,7 @@ class LibraryScreen extends StatefulWidget {
   final void Function(Book book) onUpdateBook;
   final bool showReadingStreak;
   final VoidCallback onToggleReadingStreak;
+  final Future<void> Function()? onLibraryChanged;
 
   const LibraryScreen({
     super.key,
@@ -44,6 +45,7 @@ class LibraryScreen extends StatefulWidget {
     required this.onUpdateBook,
     required this.showReadingStreak,
     required this.onToggleReadingStreak,
+    this.onLibraryChanged,
   });
 
   @override
@@ -206,6 +208,7 @@ class _LibraryScreenState extends State<LibraryScreen>
         onClose: () => Navigator.of(context).pop(),
         books: widget.books,
         onExportAll: _showExportAllOptions,
+        onLibraryChanged: widget.onLibraryChanged,
       ),
     );
   }

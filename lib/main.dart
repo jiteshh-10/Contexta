@@ -1,14 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'firebase_options.dart';
 import 'theme/app_theme.dart';
 import 'screens/splash_screen.dart';
 import 'screens/library_screen.dart';
+import 'screens/ownership_choice_screen.dart';
 import 'models/book.dart';
 import 'services/storage_service.dart';
 import 'services/database/database_service.dart';
 import 'services/connectivity_service.dart';
 import 'services/reading_streak_service.dart';
+import 'services/auth_service.dart';
+import 'services/backup_service.dart';
+
+/// Global flag indicating if Firebase is available
+bool isFirebaseAvailable = false;
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -18,6 +26,18 @@ void main() async {
     // .env file not found - will use fallback in ApiConfig
     debugPrint('Warning: .env file not found. API features may not work.');
   });
+
+  // Initialize Firebase with generated options
+  try {
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+    isFirebaseAvailable = true;
+    debugPrint('Firebase: Initialized successfully');
+  } catch (e) {
+    isFirebaseAvailable = false;
+    debugPrint('Firebase: Not configured - cloud backup disabled. Error: $e');
+  }
 
   // Initialize services
   await _initializeServices();
@@ -47,6 +67,10 @@ Future<void> _initializeServices() async {
   // Initialize reading streak tracking
   await ReadingStreakService().initialize();
   debugPrint('ReadingStreakService: Initialized');
+
+  // Initialize auth service (for backup/restore)
+  await AuthService().initialize();
+  debugPrint('AuthService: Initialized');
 }
 
 /// Main application widget
@@ -58,8 +82,9 @@ class ContextaApp extends StatefulWidget {
   State<ContextaApp> createState() => _ContextaAppState();
 }
 
-class _ContextaAppState extends State<ContextaApp> {
+class _ContextaAppState extends State<ContextaApp> with WidgetsBindingObserver {
   bool _showSplash = true;
+  bool _isFirstLaunch = false;
   ThemeMode _themeMode = ThemeMode.system;
 
   // Books state - centralized for persistence
@@ -70,23 +95,40 @@ class _ContextaAppState extends State<ContextaApp> {
 
   // Storage service instance
   final StorageService _storage = StorageService();
+  final AuthService _authService = AuthService();
+  final BackupService _backupService = BackupService();
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _initializeApp();
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     // Clean up services to prevent memory leaks
     ConnectivityService().dispose();
     ReadingStreakService().dispose();
+    _authService.dispose();
+    _backupService.dispose();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Trigger backup when app goes to background
+    if (state == AppLifecycleState.paused) {
+      _backupService.performImmediateBackup();
+    }
   }
 
   /// Initialize app: load saved data and handle splash timing
   Future<void> _initializeApp() async {
+    // Check if this is first launch
+    _isFirstLaunch = await _authService.isFirstLaunch();
+
     // Load saved books and theme preference
     await _loadSavedData();
 
@@ -103,9 +145,11 @@ class _ContextaAppState extends State<ContextaApp> {
 
   /// Load saved books and theme from local storage
   Future<void> _loadSavedData() async {
+    debugPrint('_loadSavedData: called');
     try {
       // Load books
       final savedBooks = await _storage.loadBooks();
+      debugPrint('_loadSavedData: loaded books count: \\${savedBooks.length}');
 
       // Load theme preference
       final savedTheme = _storage.loadThemeMode();
@@ -115,9 +159,13 @@ class _ContextaAppState extends State<ContextaApp> {
       } else if (savedTheme == 'dark') {
         themeMode = ThemeMode.dark;
       }
+      debugPrint('_loadSavedData: loaded theme: \\$savedTheme');
 
       // Load reading streak visibility preference
       final showReadingStreak = _storage.loadShowReadingStreak();
+      debugPrint(
+        '_loadSavedData: loaded showReadingStreak: \\$showReadingStreak',
+      );
 
       if (mounted) {
         setState(() {
@@ -125,6 +173,9 @@ class _ContextaAppState extends State<ContextaApp> {
           _themeMode = themeMode;
           _showReadingStreak = showReadingStreak;
         });
+        debugPrint('_loadSavedData: state updated');
+      } else {
+        debugPrint('_loadSavedData: not mounted, state not updated');
       }
     } catch (e) {
       debugPrint('Error loading saved data: $e');
@@ -182,6 +233,9 @@ class _ContextaAppState extends State<ContextaApp> {
 
     // Persist to storage
     _storage.saveBooks(_books);
+
+    // Schedule cloud backup
+    _backupService.scheduleBackup();
   }
 
   /// Remove a book from the library
@@ -192,6 +246,9 @@ class _ContextaAppState extends State<ContextaApp> {
 
     // Persist to storage
     _storage.saveBooks(_books);
+
+    // Schedule cloud backup
+    _backupService.scheduleBackup();
   }
 
   /// Update a book in the library
@@ -205,6 +262,9 @@ class _ContextaAppState extends State<ContextaApp> {
 
     // Persist to storage
     _storage.saveBooks(_books);
+
+    // Schedule cloud backup
+    _backupService.scheduleBackup();
   }
 
   /// Toggle reading streak visibility
@@ -247,6 +307,19 @@ class _ContextaAppState extends State<ContextaApp> {
         child:
             _showSplash
                 ? const SplashScreen(key: ValueKey('splash'))
+                : _isFirstLaunch
+                ? OwnershipChoiceScreen(
+                  key: const ValueKey('ownership'),
+                  onChoiceComplete: () {
+                    debugPrint(
+                      'Main: onChoiceComplete called, setting _isFirstLaunch = false',
+                    );
+                    setState(() {
+                      _isFirstLaunch = false;
+                    });
+                  },
+                  onLibraryChanged: _loadSavedData,
+                )
                 : LibraryScreen(
                   key: const ValueKey('library'),
                   books: _books,
@@ -257,6 +330,7 @@ class _ContextaAppState extends State<ContextaApp> {
                   onUpdateBook: _updateBook,
                   showReadingStreak: _showReadingStreak,
                   onToggleReadingStreak: _toggleReadingStreak,
+                  onLibraryChanged: _loadSavedData,
                 ),
       ),
     );

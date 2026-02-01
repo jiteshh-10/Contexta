@@ -1,0 +1,1 @@
+{"firestore":{"rules":"firestore.rules"},"flutter":{"platforms":{"android":{"default":{"projectId":"contexta-reading-app","appId":"1:216757449139:android:03fe8a34f5f16f16285bc6","fileOutput":"android/app/google-services.json"}},"dart":{"lib/firebase_options.dart":{"projectId":"contexta-reading-app","configurations":{"android":"1:216757449139:android:03fe8a34f5f16f16285bc6"}}}}}}

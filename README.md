@@ -177,7 +177,7 @@ Contexta leverages AI (Perplexity API) to explain words in the context of your c
 - Accent: Light Ink Blue (#7B8AB5)
 - Text: Warm off-white (#EDE6D8)
 
-### 📖 Shelf Interaction (v1.9.0) ⭐ **Latest**
+### 📖 Shelf Interaction (v1.9.0)
 - **Premium spatial ritual** - transforms book addition into an intentional experience
 - **Shelf opening animation** - shelf expands from top (160ms easeOutCubic)
 - **Real-time preview card** - see book appear in form as you type title
@@ -197,6 +197,32 @@ Contexta leverages AI (Perplexity API) to explain words in the context of your c
 - Book Flies: 440ms with -50px arc (authentic trajectory)
 - Highlight Glows: 250ms in → 350ms hold → 400ms out
 
+### ☁️ Ownership, Backup & Restore (v1.12.0) ⭐ **Latest**
+- **User-first data ownership** - choose local-only or cloud backup at first launch
+- **Google Sign-In integration** - secure authentication via Firebase Auth
+- **Automatic cloud backup** - debounced 3-second backup on every change
+- **Background backup** - triggers when app goes to background
+- **Cross-device restore** - seamlessly restore library on new devices
+- **Conflict resolution** - clear choice when both local and cloud have data
+- **Local export option** - `.ctxb` file export for users who prefer no accounts
+- **Settings integration** - manage backup from Settings → Library backup
+- **No forced accounts** - local users treated with equal respect
+- **Calm, Apple-style UX** - no fear messaging or pressure tactics
+
+**Use Case:** Never lose your reading progress; sync your library across devices; maintain full control of your data
+
+**What Gets Backed Up:**
+- All books and their metadata
+- All word explanations and collections
+- Reading streak history
+- User preferences (theme, explanation level, etc.)
+- Quotes captured from books
+
+**First Launch Flow:**
+- "Keep It Here" - stays on device only
+- "Sync Across Devices" - sign in with Google for cloud backup
+- "You can change this later in Settings"
+
 ---
 
 ## Feature Roadmap & Versions
@@ -212,7 +238,10 @@ Contexta leverages AI (Perplexity API) to explain words in the context of your c
 | v1.6.0 | Reading Streak | Q1 2026 | ✅ Stable |
 | v1.7.0 | Quote Capture | Q1 2026 | ✅ Stable |
 | v1.8.0 | Dark Mode Refinement | Q1 2026 | ✅ Stable |
-| v1.9.0 | Shelf Interaction (Premium UX) | Jan 2026 | ✅ Latest |
+| v1.9.0 | Shelf Interaction (Premium UX) | Jan 2026 | ✅ Stable |
+| v1.10.0 | Gentle Suggestions | Jan 2026 | ✅ Stable |
+| v1.11.0 | Book Suggestions | Jan 2026 | ✅ Stable |
+| v1.12.0 | Ownership, Backup & Restore | Feb 2026 | ✅ Latest |
 
 ---
 
@@ -628,16 +657,24 @@ Built with `CustomPaint` for crisp rendering at any size.
 ```yaml
 dependencies:
   flutter: sdk
-  cupertino_icons: ^1.0.8     # iOS-style icons
-  http: ^1.2.0                 # HTTP client for API
-  shared_preferences: ^2.2.2   # Local storage
-  flutter_dotenv: ^5.1.0       # Environment config
+  cupertino_icons: ^1.0.8         # iOS-style icons
+  http: ^1.2.0                     # HTTP client for API
+  shared_preferences: ^2.2.2       # Local storage
+  flutter_dotenv: ^5.1.0           # Environment config
+  sqflite: ^2.4.2                  # SQLite database
+  path: ^1.9.1                     # Path utilities
+  path_provider: ^2.1.5            # File system paths
+  firebase_core: ^3.12.1           # Firebase core
+  firebase_auth: ^5.5.2            # Firebase authentication
+  cloud_firestore: ^5.6.6          # Firestore database
+  google_sign_in: ^6.2.2           # Google authentication
+  file_picker: ^8.3.7              # File picker for local export
 
 dev_dependencies:
   flutter_test: sdk
-  flutter_lints: ^5.0.0        # Linting rules
+  flutter_lints: ^5.0.0            # Linting rules
   flutter_launcher_icons: ^0.14.3  # Icon generation
-  image: ^4.1.3                # Image processing
+  image: ^4.1.3                    # Image processing
 ```
 
 ---

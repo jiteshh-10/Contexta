@@ -211,12 +211,16 @@ class AppTheme {
       ),
     ),
     snackBarTheme: SnackBarThemeData(
-      backgroundColor: charcoal,
-      contentTextStyle: const TextStyle(color: beige),
+      backgroundColor: inkBlue,
+      contentTextStyle: const TextStyle(
+        color: beige,
+        fontWeight: FontWeight.w500,
+      ),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(radiusMedium),
       ),
       behavior: SnackBarBehavior.floating,
+      elevation: 4,
     ),
     textTheme: const TextTheme(
       displayLarge: TextStyle(
@@ -431,12 +435,16 @@ class AppTheme {
       ),
     ),
     snackBarTheme: SnackBarThemeData(
-      backgroundColor: darkTextPrimary,
-      contentTextStyle: const TextStyle(color: darkBackground),
+      backgroundColor: darkPaperHighest,
+      contentTextStyle: const TextStyle(
+        color: darkTextPrimary,
+        fontWeight: FontWeight.w500,
+      ),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(radiusMedium),
       ),
       behavior: SnackBarBehavior.floating,
+      elevation: 4,
     ),
     textTheme: const TextTheme(
       displayLarge: TextStyle(

@@ -5,7 +5,6 @@ import 'package:share_plus/share_plus.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import '../models/book.dart';
-import '../models/word_entry.dart';
 
 /// Export format options
 enum ExportFormat {

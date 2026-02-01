@@ -179,9 +179,6 @@ class DatabaseService {
 
   /// Get database file size (for debugging/stats)
   Future<int> getDatabaseSize() async {
-    final databasesPath = await getDatabasesPath();
-    final path = join(databasesPath, _databaseName);
-
     try {
       final db = await database;
       final result = await db.rawQuery(

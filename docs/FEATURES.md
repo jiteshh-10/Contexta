@@ -1,9 +1,10 @@
 # Contexta - Complete Feature Documentation
 
-> **Version:** 1.11.0  
-> **Last Updated:** January 31, 2026  
+> **Version:** 1.12.0  
+> **Last Updated:** February 1, 2026  
 > **Authors:** Development Team  
-> **Repository:** github.com/jiteshh-10/Contexta
+> **Repository:** github.com/jiteshh-10/Contexta  
+> **Status:** ✅ Production Ready
 
 ---
 
@@ -98,10 +99,21 @@
     - [UI Components](#147-ui-components)
     - [Animation & Timing](#148-animation--timing)
     - [Copy Tone Guidelines](#149-copy-tone-guidelines)
-15. [API Reference](#15-api-reference)
-16. [Project Architecture](#16-project-architecture)
-17. [Troubleshooting](#17-troubleshooting)
-18. [Changelog](#18-changelog)
+15. [Ownership, Backup & Restore (v1.12.0)](#15-ownership-backup--restore-v1120)
+    - [Overview](#151-overview)
+    - [Core Principles](#152-core-principles)
+    - [First Launch Flow](#153-first-launch-flow)
+    - [Cloud Backup Strategy](#154-cloud-backup-strategy)
+    - [Restore Strategy](#155-restore-strategy)
+    - [Local Export](#156-local-export)
+    - [Services](#157-services)
+    - [UI Components](#158-ui-components)
+    - [Settings Integration](#159-settings-integration)
+    - [Copy Tone Guidelines](#1510-copy-tone-guidelines)
+16. [API Reference](#16-api-reference)
+17. [Project Architecture](#17-project-architecture)
+18. [Troubleshooting](#18-troubleshooting)
+19. [Changelog](#19-changelog)
 
 ---
 
@@ -3646,7 +3658,344 @@ lib/
 
 ---
 
-## 15. API Reference
+## 15. Ownership, Backup & Restore (v1.12.0)
+
+### 15.1 Overview
+
+Contexta's backup system respects user agency. Data ownership is a choice, not a requirement. Users can operate entirely locally or opt into cloud backup—both paths are equally valid.
+
+**Key Principle:** SQLite remains king. Cloud is a safety net, not a replacement.
+
+---
+
+### 15.2 Core Principles
+
+1. **No Forced Accounts** — Users choose local-only or cloud at first launch
+2. **No Fear Messaging** — Never pressure with "Your data isn't safe" warnings
+3. **Equal Dignity** — Local users aren't treated as second-class
+4. **Transparent Operations** — User knows when backup happens
+5. **User Controls Merge** — No auto-merge; user always decides
+6. **Graceful Degradation** — Offline is fine; sync when ready
+
+---
+
+### 15.3 First Launch Flow
+
+**OwnershipChoiceScreen** appears on first app launch:
+
+```
+┌─────────────────────────────────────────┐
+│                                         │
+│            [Contexta Logo]              │
+│                                         │
+│         Your reading, your way.         │
+│                                         │
+│    Your books and words belong to you.  │
+│    Choose how you'd like to keep them.  │
+│                                         │
+│  ┌─────────────────────────────────┐   │
+│  │     📱 Keep It Here              │   │
+│  │     Stays on this device only    │   │
+│  └─────────────────────────────────┘   │
+│                                         │
+│  ┌─────────────────────────────────┐   │
+│  │     ☁️ Sync Across Devices       │   │
+│  │     Sign in with Google          │   │
+│  └─────────────────────────────────┘   │
+│                                         │
+│    You can change this later in         │
+│    Settings.                            │
+│                                         │
+└─────────────────────────────────────────┘
+```
+
+**Copy Guidelines:**
+- Header: "Your reading, your way."
+- Subtext: "Your books and words belong to you."
+- Local option: "Keep It Here" / "Stays on this device only"
+- Cloud option: "Sync Across Devices" / "Sign in with Google"
+- Footer: "You can change this later in Settings."
+
+---
+
+### 15.4 Cloud Backup Strategy
+
+**When Backup Triggers:**
+1. **Debounced on data change** — 3 seconds after book add/edit/remove
+2. **App goes to background** — Via `WidgetsBindingObserver`
+3. **Manual trigger** — From Settings
+
+**What's Backed Up:**
+```dart
+BackupSnapshot {
+  version: "1.0.0",
+  createdAt: DateTime,
+  books: List<Book>,
+  words: Map<String, List<WordEntry>>,  // bookId → words
+  quotes: Map<String, String>,          // wordId → quote
+  readingDays: List<String>,            // yyyy-MM-dd format
+  preferences: Map<String, dynamic>,    // theme, levels, etc.
+}
+```
+
+**Firestore Structure:**
+```
+users/{userId}/
+├── backup/
+│   └── snapshot (single document, always latest)
+└── metadata/
+    └── info (createdAt, lastBackupAt, device info)
+```
+
+**Backup Debouncing:**
+```dart
+Timer? _debounceTimer;
+void scheduleBackup() {
+  _debounceTimer?.cancel();
+  _debounceTimer = Timer(Duration(seconds: 3), _performBackup);
+}
+```
+
+---
+
+### 15.5 Restore Strategy
+
+**Scenario 1: Existing User, New Device**
+
+When user signs in on new device and cloud data exists:
+
+```
+┌─────────────────────────────────────────┐
+│                                         │
+│            Welcome back                 │
+│                                         │
+│   We found your library from a previous │
+│   device.                               │
+│                                         │
+│   📚 12 books · 145 words              │
+│   Last updated: 2 hours ago             │
+│                                         │
+│  ┌─────────────────────────────────┐   │
+│  │         Restore Library          │   │
+│  └─────────────────────────────────┘   │
+│                                         │
+│  ┌─────────────────────────────────┐   │
+│  │         Start Fresh              │   │
+│  └─────────────────────────────────┘   │
+│                                         │
+└─────────────────────────────────────────┘
+```
+
+**Scenario 2: Data Conflict**
+
+When both local and cloud have data:
+
+```
+┌─────────────────────────────────────────┐
+│                                         │
+│          This device has data           │
+│                                         │
+│   Your cloud backup and this device     │
+│   both have libraries.                  │
+│                                         │
+│   📱 This Device     ☁️ Your Backup     │
+│   8 books            12 books           │
+│   52 words           145 words          │
+│                                         │
+│  ┌─────────────────────────────────┐   │
+│  │      Keep This Device's Data     │   │
+│  └─────────────────────────────────┘   │
+│                                         │
+│  ┌─────────────────────────────────┐   │
+│  │      Replace with Backup         │   │
+│  └─────────────────────────────────┘   │
+│                                         │
+└─────────────────────────────────────────┘
+```
+
+**V1 Approach:** Replace-only. No merge. User picks one source of truth.
+
+---
+
+### 15.6 Local Export
+
+For users who want backup without accounts:
+
+```dart
+LocalExportService {
+  Future<File> exportLibrary(BackupSnapshot snapshot);
+  Future<BackupSnapshot?> importLibrary(File file);
+  Future<void> shareExport(File file);
+}
+```
+
+**Export Format:** `.ctxb` (JSON internally, custom extension)
+
+**File Naming:** `contexta_backup_2026-02-01.ctxb`
+
+**Access from:** Settings → Library backup → Export to File
+
+---
+
+### 15.7 Services
+
+#### AuthService
+**Location:** `lib/services/auth_service.dart`
+
+```dart
+class AuthService {
+  // State stream
+  Stream<OwnershipState> get stateStream;
+  OwnershipState get currentState;
+  
+  // First launch
+  Future<bool> isFirstLaunch();
+  Future<void> chooseLocalMode();
+  
+  // Authentication
+  Future<bool> signInWithGoogle();
+  Future<void> signOut();
+  
+  // Silent sign-in (app restart)
+  Future<void> trySilentSignIn();
+}
+```
+
+#### BackupService
+**Location:** `lib/services/backup_service.dart`
+
+```dart
+class BackupService {
+  // Backup operations
+  void scheduleBackup();  // Debounced
+  Future<void> performImmediateBackup();
+  
+  // Restore operations
+  Future<bool> hasCloudData();
+  Future<BackupSnapshot?> getCloudSnapshot();
+  Future<void> restoreFromCloud();
+  
+  // State
+  Stream<bool> get isBackingUp;
+  DateTime? get lastBackupTime;
+}
+```
+
+#### LocalExportService
+**Location:** `lib/services/local_export_service.dart`
+
+```dart
+class LocalExportService {
+  Future<File> exportLibrary(BackupSnapshot snapshot);
+  Future<BackupSnapshot?> importLibrary(File file);
+  Future<void> shareExport(File file);
+}
+```
+
+---
+
+### 15.8 UI Components
+
+#### OwnershipChoiceScreen
+**Location:** `lib/screens/ownership_choice_screen.dart`
+
+First-launch screen with equal-weight local/cloud options. Fade-in animation, calm messaging.
+
+#### BackupSettingsScreen
+**Location:** `lib/screens/backup_settings_screen.dart`
+
+Settings page showing:
+- Current backup status (local vs cloud)
+- Last backup time (if cloud)
+- Sign in/out button
+- Export to file button
+- Privacy note
+
+#### RestorePromptSheet
+**Location:** `lib/widgets/restore_prompt_sheet.dart`
+
+Bottom sheet for restore choice when cloud data is found.
+
+#### DataConflictSheet
+**Location:** `lib/widgets/restore_prompt_sheet.dart`
+
+Bottom sheet for conflict resolution showing both datasets.
+
+#### RestoringSheet
+**Location:** `lib/widgets/restore_prompt_sheet.dart`
+
+Loading state during restore operation.
+
+---
+
+### 15.9 Settings Integration
+
+Access from: Settings → "Library backup"
+
+```
+┌─────────────────────────────────────────┐
+│  [Cloud icon]  Library backup       >   │
+└─────────────────────────────────────────┘
+```
+
+Navigates to `BackupSettingsScreen`.
+
+---
+
+### 15.10 Copy Tone Guidelines
+
+**Philosophy:** Calm, Apple-style. Never urgent. Never fear-based.
+
+| Context | Do | Don't |
+|---------|-----|-------|
+| First launch | "Your reading, your way" | "Protect your data!" |
+| Backup status | "Last backed up 2 hours ago" | "Warning: Not backed up recently!" |
+| Local mode | "Stays on this device only" | "Unprotected" |
+| Cloud mode | "Sync Across Devices" | "Securely backed up to the cloud" |
+| Restore prompt | "We found your library" | "Restore your lost data now!" |
+| Conflict | "Both have libraries" | "Data conflict detected!" |
+
+**Voice:**
+- Speaks like a calm librarian
+- Never uses exclamation marks
+- Never uses "Warning" or "Alert"
+- Respects user intelligence
+
+---
+
+### 15.11 Dependencies
+
+```yaml
+# pubspec.yaml additions
+dependencies:
+  firebase_core: ^3.9.0
+  cloud_firestore: ^5.6.0
+  google_sign_in: ^6.2.2
+```
+
+---
+
+### 15.12 Project Structure (New Files)
+
+```
+lib/
+├── models/
+│   ├── backup_snapshot.dart      # Serializable library snapshot
+│   └── ownership_state.dart      # Ownership mode and state
+├── services/
+│   ├── auth_service.dart         # Google Sign-In, state management
+│   ├── backup_service.dart       # Firestore backup/restore
+│   └── local_export_service.dart # JSON export/import
+├── screens/
+│   ├── ownership_choice_screen.dart  # First-launch choice
+│   └── backup_settings_screen.dart   # Backup settings page
+└── widgets/
+    └── restore_prompt_sheet.dart     # Restore/conflict sheets
+```
+
+---
+
+## 16. API Reference
 
 ### PerplexityService
 
@@ -3703,7 +4052,7 @@ ExplanationLevel loadExplanationLevel();
 
 ---
 
-## 16. Project Architecture
+## 17. Project Architecture
 
 ### High-Level Architecture
 
@@ -3819,7 +4168,7 @@ class _MyAppState extends State<MyApp> {
 
 ---
 
-## 17. Troubleshooting
+## 18. Troubleshooting
 
 ### Common Issues
 
@@ -3984,9 +4333,89 @@ dependencies:
 
 ---
 
-## 18. Changelog
+## 19. Changelog
 
 All notable changes to Contexta are documented here.
+
+### [1.12.0] - 2026-02-01
+
+#### Feature - Ownership, Backup & Restore
+*Commit: feat: Add ownership choice, cloud backup, and restore functionality*
+
+- **Ownership Choice System**
+  - First-launch screen with equal-weight local/cloud options
+  - "Your reading, your way" philosophy
+  - No forced accounts, no fear messaging
+  - User can change choice later in Settings
+
+- **AuthService**
+  - Google Sign-In integration
+  - Silent sign-in on app restart
+  - State stream for reactive UI
+  - Preference persistence via SharedPreferences
+
+- **BackupService**
+  - Firestore cloud backup
+  - Debounced backup (3 seconds after data change)
+  - App background trigger via WidgetsBindingObserver
+  - Versioned snapshots (v1.0.0)
+  - Connectivity-aware operations
+
+- **BackupSnapshot Model**
+  - Complete library serialization
+  - Books, words, quotes, reading days, preferences
+  - Version compatibility checking
+  - Summary statistics (book count, word count)
+
+- **OwnershipState Model**
+  - OwnershipMode enum (undecided, local, cloud)
+  - User identity tracking
+  - Backup progress and error state
+
+- **LocalExportService**
+  - JSON export with custom `.ctxb` extension
+  - Share functionality
+  - Import with validation
+
+- **OwnershipChoiceScreen**
+  - Fade-in animation
+  - Equal-weight buttons for local/cloud
+  - Calm, literary copy tone
+
+- **BackupSettingsScreen**
+  - Status card with last backup time
+  - Sign in/out functionality
+  - Export to file button
+  - Privacy note
+
+- **RestorePromptSheet**
+  - Welcome back message with data summary
+  - Restore vs Start Fresh choice
+
+- **DataConflictSheet**
+  - Side-by-side comparison of local vs cloud
+  - Keep This Device vs Replace with Backup
+
+- **RestoringSheet**
+  - Loading state with animated dots
+  - "Restoring your library..." message
+
+- **Settings Integration**
+  - New "Library backup" navigation item
+  - Navigates to BackupSettingsScreen
+
+- **main.dart Integration**
+  - Firebase initialization
+  - WidgetsBindingObserver for background backup
+  - scheduleBackup() on book add/edit/remove
+  - First-launch detection
+
+#### Dependencies Added
+- firebase_core: ^3.9.0
+- cloud_firestore: ^5.6.0
+- google_sign_in: ^6.2.2
+
+---
 
 ### [1.11.0] - 2026-01-31
 
@@ -4613,12 +5042,16 @@ lib/
 ├── models/
 │   ├── book.dart                     # Book data model
 │   ├── word_entry.dart               # Word entry model
-│   └── explanation_level.dart        # Explanation levels enum (v1.1.0)
+│   ├── explanation_level.dart        # Explanation levels enum (v1.1.0)
+│   ├── backup_snapshot.dart          # Backup snapshot model (v1.12.0)
+│   └── ownership_state.dart          # Ownership state model (v1.12.0)
 ├── screens/
 │   ├── splash_screen.dart            # Animated splash
 │   ├── library_screen.dart           # Main library view
 │   ├── book_detail_screen.dart       # Word input & collection
-│   └── add_book_screen.dart          # Add book form
+│   ├── add_book_screen.dart          # Add book form
+│   ├── ownership_choice_screen.dart  # First-launch choice (v1.12.0)
+│   └── backup_settings_screen.dart   # Backup settings (v1.12.0)
 ├── services/
 │   ├── database/                     # Database module (v1.1.0)
 │   │   ├── database.dart             # Barrel export
@@ -4629,7 +5062,10 @@ lib/
 │   ├── storage_service.dart          # SharedPreferences
 │   ├── author_suggestion_service.dart   # Author suggestions (v1.10.0)
 │   ├── spelling_suggestion_service.dart # Word spelling (v1.10.0)
-│   └── word_explanation_cache_service.dart  # LRU cache (v1.1.0)
+│   ├── word_explanation_cache_service.dart  # LRU cache (v1.1.0)
+│   ├── auth_service.dart             # Google Sign-In (v1.12.0)
+│   ├── backup_service.dart           # Cloud backup (v1.12.0)
+│   └── local_export_service.dart     # Local export (v1.12.0)
 ├── theme/
 │   └── app_theme.dart                # Design tokens, colors
 └── widgets/
@@ -4649,7 +5085,8 @@ lib/
     ├── suggestion_strip.dart         # Author suggestions (v1.10.0)
     ├── word_explanation_sheet.dart   # Word detail modal
     ├── word_frequency_card.dart      # Challenging words card (v1.2.0)
-    └── word_list_item.dart           # Word list rows
+    ├── word_list_item.dart           # Word list rows
+    └── restore_prompt_sheet.dart     # Restore/conflict sheets (v1.12.0)
 ```
 
 ### All Dependencies
@@ -4666,6 +5103,9 @@ dependencies:
   sqflite: ^2.4.2                 # SQLite database (v1.1.0)
   path: ^1.9.1                    # Path utilities (v1.1.0)
   connectivity_plus: ^6.1.4       # Network status (v1.1.0)
+  firebase_core: ^3.9.0           # Firebase initialization (v1.12.0)
+  cloud_firestore: ^5.6.0         # Cloud backup storage (v1.12.0)
+  google_sign_in: ^6.2.2          # Google authentication (v1.12.0)
 
 dev_dependencies:
   flutter_test:
@@ -4691,6 +5131,6 @@ dev_dependencies:
 
 ---
 
-*This documentation covers Contexta from initial release through v1.10.0. For the latest updates, refer to the git commit history.*
+*This documentation covers Contexta from initial release through v1.12.0. For the latest updates, refer to the git commit history.*
 
-*Last updated: January 31, 2026*
+*Last updated: February 1, 2026*
