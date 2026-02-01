@@ -2,12 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../theme/app_theme.dart';
 import '../models/book.dart';
+import '../screens/backup_settings_screen.dart';
 
 /// Settings bottom sheet for app preferences
 ///
 /// Currently includes:
 /// - Theme mode toggle
 /// - Reading consistency indicator toggle
+/// - Library backup
 /// - Export all words option
 class SettingsSheet extends StatefulWidget {
   final bool showReadingStreak;
@@ -17,6 +19,7 @@ class SettingsSheet extends StatefulWidget {
   final VoidCallback onClose;
   final List<Book>? books;
   final VoidCallback? onExportAll;
+  final Future<void> Function()? onLibraryChanged;
 
   const SettingsSheet({
     super.key,
@@ -27,6 +30,7 @@ class SettingsSheet extends StatefulWidget {
     required this.onClose,
     this.books,
     this.onExportAll,
+    this.onLibraryChanged,
   });
 
   @override
@@ -133,6 +137,30 @@ class _SettingsSheetState extends State<SettingsSheet> {
             ),
           ],
 
+          const SizedBox(height: 12),
+
+          // Library backup navigation
+          _SettingsNavigation(
+            title: 'Library backup',
+            description: 'Back up, restore, or export your library',
+            icon: Icons.cloud_outlined,
+            onTap: () {
+              HapticFeedback.lightImpact();
+              final navigator = Navigator.of(context);
+              widget.onClose();
+              Future.delayed(const Duration(milliseconds: 200), () {
+                navigator.push(
+                  MaterialPageRoute(
+                    builder:
+                        (context) => BackupSettingsScreen(
+                          onLibraryChanged: widget.onLibraryChanged,
+                        ),
+                  ),
+                );
+              });
+            },
+          ),
+
           const SizedBox(height: 8),
         ],
       ),
@@ -174,13 +202,11 @@ class _SettingsToggleState extends State<_SettingsToggle> {
         decoration: BoxDecoration(
           color:
               _isPressed
-                  ? Theme.of(
-                    context,
-                  ).colorScheme.primary.withValues(alpha: 0.05)
+                  ? Theme.of(context).colorScheme.primary.withOpacity(0.05)
                   : Theme.of(context).colorScheme.surface,
           borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
           border: Border.all(
-            color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.1),
+            color: Theme.of(context).colorScheme.outline.withOpacity(0.1),
           ),
         ),
         child: Row(
@@ -215,7 +241,7 @@ class _SettingsToggleState extends State<_SettingsToggle> {
               child: Switch.adaptive(
                 value: widget.value,
                 onChanged: (_) {},
-                activeColor: Theme.of(context).colorScheme.primary,
+                activeTrackColor: Theme.of(context).colorScheme.primary,
               ),
             ),
           ],
@@ -259,13 +285,11 @@ class _SettingsActionState extends State<_SettingsAction> {
         decoration: BoxDecoration(
           color:
               _isPressed
-                  ? Theme.of(
-                    context,
-                  ).colorScheme.primary.withValues(alpha: 0.05)
+                  ? Theme.of(context).colorScheme.primary.withOpacity(0.05)
                   : Theme.of(context).colorScheme.surface,
           borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
           border: Border.all(
-            color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.1),
+            color: Theme.of(context).colorScheme.outline.withOpacity(0.1),
           ),
         ),
         child: Row(
@@ -300,6 +324,94 @@ class _SettingsActionState extends State<_SettingsAction> {
               widget.icon,
               color: Theme.of(context).colorScheme.primary,
               size: 22,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Settings navigation item (navigates to another screen)
+/// Icon is on the RIGHT side with a chevron for consistency
+class _SettingsNavigation extends StatefulWidget {
+  final String title;
+  final String description;
+  final IconData icon;
+  final VoidCallback onTap;
+
+  const _SettingsNavigation({
+    required this.title,
+    required this.description,
+    required this.icon,
+    required this.onTap,
+  });
+
+  @override
+  State<_SettingsNavigation> createState() => _SettingsNavigationState();
+}
+
+class _SettingsNavigationState extends State<_SettingsNavigation> {
+  bool _isPressed = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTapDown: (_) => setState(() => _isPressed = true),
+      onTapUp: (_) => setState(() => _isPressed = false),
+      onTapCancel: () => setState(() => _isPressed = false),
+      onTap: widget.onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color:
+              _isPressed
+                  ? Theme.of(context).colorScheme.primary.withOpacity(0.05)
+                  : Theme.of(context).colorScheme.surface,
+          borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
+          border: Border.all(
+            color: Theme.of(context).colorScheme.outline.withOpacity(0.1),
+          ),
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    widget.title,
+                    style: TextStyle(
+                      fontFamily: 'Serif',
+                      fontSize: 15,
+                      fontWeight: FontWeight.w500,
+                      color: Theme.of(context).colorScheme.onSurface,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    widget.description,
+                    style: TextStyle(
+                      fontFamily: 'Inter',
+                      fontSize: 12,
+                      color: AppTheme.getTextSecondary(context),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 12),
+            Icon(
+              widget.icon,
+              color: Theme.of(context).colorScheme.primary,
+              size: 22,
+            ),
+            const SizedBox(width: 8),
+            Icon(
+              Icons.arrow_forward_ios_rounded,
+              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.3),
+              size: 16,
             ),
           ],
         ),
