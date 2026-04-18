@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
+import '../models/ai_request_error.dart';
 import '../models/book.dart';
 import '../models/book_suggestion.dart';
+import '../screens/ai_settings_screen.dart';
 import '../services/book_suggestion_service.dart';
+import 'ai_key_issue_dialog.dart';
 import 'empty_shelf_suggestions.dart';
 import 'suggestions_list.dart';
 
@@ -68,6 +71,31 @@ class _BookSuggestionsSheetState extends State<BookSuggestionsSheet> {
       } else {
         _error = result.error;
       }
+    });
+
+    if (!result.success && result.error != null) {
+      final aiError = AiRequestError(
+        type: result.errorType,
+        message: result.error!,
+      );
+
+      if (aiError.shouldShowCredentialPopup) {
+        await showAiCredentialIssueDialog(
+          context: context,
+          error: aiError,
+          onOpenSettings: _openAiSettings,
+        );
+      }
+    }
+  }
+
+  void _openAiSettings() {
+    widget.onClose();
+    Future.delayed(const Duration(milliseconds: 220), () {
+      if (!mounted) return;
+      Navigator.of(
+        context,
+      ).push(MaterialPageRoute(builder: (_) => const AiSettingsScreen()));
     });
   }
 

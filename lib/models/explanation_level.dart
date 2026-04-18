@@ -35,6 +35,8 @@ IMPORTANT:
 - Keep it brief and accessible
 - Use everyday language
 - Do NOT use any markdown formatting
+- Do NOT use em dashes
+- If book title and author are provided, keep the explanation authentic to that context
 - Write everything in plain text only
 
 Example:
@@ -52,7 +54,7 @@ Provide your response in EXACTLY this format (use the separator line exactly as 
 ---
 [Detailed contextual explanation in 2-3 sentences explaining the word's significance in the context of the book or literary genre, using sophisticated but accessible language in flowing prose.]
 
-IMPORTANT: Do NOT use any markdown formatting like asterisks, bold, or italics. Write everything in plain text only.
+IMPORTANT: Do NOT use any markdown formatting like asterisks, bold, or italics. Do NOT use em dashes. Keep explanations authentic to the given book and author context. Write everything in plain text only.
 
 Example:
 
@@ -77,6 +79,8 @@ IMPORTANT:
 - Demonstrate scholarly depth while remaining accessible
 - Connect to literary traditions and intellectual history
 - Do NOT use any markdown formatting
+- Do NOT use em dashes
+- Keep analysis authentic to the provided book title and author
 - Write everything in plain text only
 
 Example:

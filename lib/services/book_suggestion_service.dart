@@ -1,23 +1,26 @@
 import 'dart:async';
 import 'dart:convert';
-import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../config/api_config.dart';
+import '../models/ai_request_error.dart';
 import '../models/book.dart';
 import '../models/book_suggestion.dart';
 import 'connectivity_service.dart';
+import 'llm_gateway_service.dart';
 
 /// Result class for book suggestion API calls
 class BookSuggestionsResult {
   final bool success;
   final List<BookSuggestion> suggestions;
   final String? error;
+  final AiRequestErrorType errorType;
   final String source; // 'cache', 'api', or 'error'
 
   const BookSuggestionsResult._({
     required this.success,
     this.suggestions = const [],
     this.error,
+    this.errorType = AiRequestErrorType.none,
     this.source = 'api',
   });
 
@@ -32,10 +35,14 @@ class BookSuggestionsResult {
     );
   }
 
-  factory BookSuggestionsResult.failure(String error) {
+  factory BookSuggestionsResult.failure(
+    String error, {
+    AiRequestErrorType errorType = AiRequestErrorType.unknown,
+  }) {
     return BookSuggestionsResult._(
       success: false,
       error: error,
+      errorType: errorType,
       source: 'error',
     );
   }
@@ -58,7 +65,7 @@ class BookSuggestionService {
   factory BookSuggestionService() => _instance;
   BookSuggestionService._internal();
 
-  final http.Client _client = http.Client();
+  final LlmGatewayService _llmGateway = LlmGatewayService();
   final ConnectivityService _connectivity = ConnectivityService();
 
   // Cache key for suggestions
@@ -101,22 +108,22 @@ class BookSuggestionService {
 
         return BookSuggestionsResult.failure(
           'You\'re offline. Connect to the internet to get reading suggestions.',
+          errorType: AiRequestErrorType.offline,
         );
       }
 
       // Step 3: Check API key
-      if (!ApiConfig.isApiKeyConfigured) {
-        return BookSuggestionsResult.failure('API key not configured.');
+      if (!await ApiConfig.isLlmConfigured) {
+        return BookSuggestionsResult.failure(
+          'Provider name or API key is missing. Add both in Settings > AI provider & key.',
+          errorType: AiRequestErrorType.keyMissing,
+        );
       }
 
       // Step 4: Build context from reading history
       final context = _buildReadingContext(books);
 
       // Step 5: Make API call
-      final apiKey = ApiConfig.perplexityApiKey;
-      final url = Uri.parse(
-        '${ApiConfig.perplexityBaseUrl}${ApiConfig.chatCompletionsEndpoint}',
-      );
 
       final systemPrompt =
           '''You are a thoughtful librarian helping a reader discover their next book.
@@ -155,64 +162,52 @@ Remember:
 - Sound like a librarian, not an algorithm
 - These should be FRESH suggestions different from previous ones''';
 
-      final requestBody = jsonEncode({
-        'model': ApiConfig.perplexityModel,
-        'messages': [
-          {'role': 'system', 'content': systemPrompt},
-          {'role': 'user', 'content': userPrompt},
-        ],
-        'max_tokens': 500,
-        'temperature':
-            forceRefresh ? 0.9 : 0.7, // Higher temp for variety on refresh
-      });
+      final generationResult = await _llmGateway.generateText(
+        taskSystemPrompt: systemPrompt,
+        userPrompt: userPrompt,
+        maxOutputTokens: 700,
+        temperature: forceRefresh ? 0.9 : 0.7,
+      );
 
-      final response = await _client
-          .post(
-            url,
-            headers: {
-              'Authorization': 'Bearer $apiKey',
-              'Content-Type': 'application/json',
-            },
-            body: requestBody,
-          )
-          .timeout(const Duration(seconds: 30));
-
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        final content = data['choices']?[0]?['message']?['content'] as String?;
-
-        if (content != null && content.isNotEmpty) {
-          final suggestions = _parseResponse(content, books);
-
-          // Cache the suggestions
-          await _cacheSuggestions(suggestions, books);
-
-          return BookSuggestionsResult.success(suggestions, source: 'api');
-        }
-
+      if (!generationResult.success || generationResult.text == null) {
+        final error = generationResult.error;
         return BookSuggestionsResult.failure(
-          'Received empty response from API.',
-        );
-      } else if (response.statusCode == 401) {
-        return BookSuggestionsResult.failure('Invalid API key.');
-      } else if (response.statusCode == 429) {
-        return BookSuggestionsResult.failure('Please try again in a moment.');
-      } else {
-        return BookSuggestionsResult.failure(
-          'Unable to get suggestions right now.',
+          error?.message ?? 'Unable to get suggestions right now.',
+          errorType: error?.type ?? AiRequestErrorType.unknown,
         );
       }
+
+      final suggestions = _parseResponse(generationResult.text!, books);
+      if (suggestions.isEmpty) {
+        return BookSuggestionsResult.failure(
+          'Received invalid suggestion format from the provider. Please try again.',
+          errorType: AiRequestErrorType.malformedResponse,
+        );
+      }
+
+      // Cache the suggestions
+      await _cacheSuggestions(suggestions, books);
+
+      return BookSuggestionsResult.success(suggestions, source: 'api');
     } on TimeoutException {
       return BookSuggestionsResult.failure(
         'Request timed out. Please try again.',
+        errorType: AiRequestErrorType.timeout,
       );
-    } on http.ClientException {
+    } on FormatException {
       return BookSuggestionsResult.failure(
-        'Network error. Please check your connection.',
+        'Failed to parse AI response. Please try again.',
+        errorType: AiRequestErrorType.malformedResponse,
       );
-    } catch (e) {
+    } on ApiKeyNotConfiguredException catch (e) {
+      return BookSuggestionsResult.failure(
+        e.message,
+        errorType: AiRequestErrorType.keyMissing,
+      );
+    } catch (_) {
       return BookSuggestionsResult.failure(
         'Something went wrong. Please try again.',
+        errorType: AiRequestErrorType.unknown,
       );
     }
   }
@@ -405,6 +400,6 @@ Remember:
 
   /// Dispose resources
   void dispose() {
-    _client.close();
+    _llmGateway.dispose();
   }
 }

@@ -1,10 +1,13 @@
 # Contexta - Complete Feature Documentation
 
-> **Version:** 1.12.0  
-> **Last Updated:** February 1, 2026  
+> **Version:** 1.13.0  
+> **Last Updated:** April 18, 2026  
 > **Authors:** Development Team  
 > **Repository:** github.com/jiteshh-10/Contexta  
 > **Status:** ✅ Production Ready
+
+> **Latest Update (v1.13.0):** Migrated AI layer to provider-agnostic routing, added secure user-owned API key management in Settings, added actionable key issue popups, and applied a shared master prompt across AI workflows.
+> **Historical Note:** Some pre-v1.13 sections keep original Perplexity naming for historical changelog accuracy.
 
 ---
 
@@ -129,7 +132,7 @@ When reading challenging literature, encountering an unfamiliar word breaks the 
 
 ### The Solution
 
-Contexta leverages AI (Perplexity API) to explain words in the context of your current book, providing:
+Contexta leverages AI through a user-configured LLM provider to explain words in the context of your current book, providing:
 - A **short definition** (4-5 words)
 - A **contextual explanation** considering the book's themes, genre, and author's style
 
@@ -219,12 +222,12 @@ final book = Book(
 
 The core feature that differentiates Contexta from traditional dictionaries.
 
-#### Perplexity API Integration
+#### LLM Provider Integration
 
-**Location:** `lib/services/perplexity_service.dart`
+**Location:** `lib/services/llm_explanation_service.dart`
 
 ```dart
-class PerplexityService {
+class LlmExplanationService {
   /// Explain a word with book context
   Future<WordExplanationResult> explainWord({
     required String word,
@@ -240,7 +243,7 @@ class PerplexityService {
 
 | Setting | Value | Description |
 |---------|-------|-------------|
-| Model | `sonar` | Perplexity's fast model |
+| Model | Provider profile inferred from provider name | Transport-specific default |
 | Max Tokens | 300 | Response length limit |
 | Temperature | 0.3 | Focused, less creative |
 | Timeout | 30 seconds | Request timeout |
@@ -259,13 +262,14 @@ genre, using sophisticated but accessible language.]
 
 #### Environment Setup
 
-Create `.env` file in project root:
+Preferred: add your key in-app via **Settings → AI provider & key**.
+
+Optional fallback for local dev: create `.env` file in project root:
 
 ```env
-PERPLEXITY_API_KEY=your_api_key_here
+LLM_PROVIDER_NAME=your_provider_name_here
+LLM_API_KEY=your_api_key_here
 ```
-
-Get your API key from: https://www.perplexity.ai/settings/api
 
 ### 2.3 Word Collection Management
 
@@ -4337,6 +4341,17 @@ dependencies:
 
 All notable changes to Contexta are documented here.
 
+### [1.13.0] - 2026-04-18
+
+#### Feature - Multi-Provider Routing + Open-Source API Key Ownership
+
+- Migrated AI layer from single-provider Perplexity to provider-agnostic routing
+- Added secure on-device key management via `flutter_secure_storage`
+- Added **Settings → AI provider & key** screen for user-managed credentials
+- Added clear popup guidance for missing/invalid/expired/quota key issues
+- Added shared master prompt configuration applied to all AI calls
+- Preserved existing visual language and interaction style in settings UI
+
 ### [1.12.0] - 2026-02-01
 
 #### Feature - Ownership, Backup & Restore
@@ -5116,21 +5131,25 @@ dev_dependencies:
 ### Environment Setup
 
 1. Clone repository
-2. Create `.env` file in project root:
-   ```env
-   PERPLEXITY_API_KEY=pplx-xxxxxxxxxxxxxxxxxx
-   ```
-3. Run `flutter pub get`
-4. Run `flutter run`
+2. Run `flutter pub get`
+3. Run `flutter run`
+4. Open **Settings → AI provider & key**, enter provider name, and add your key
+
+Optional fallback for local-only testing:
+
+```env
+LLM_PROVIDER_NAME=your_provider_name_here
+LLM_API_KEY=your_api_key_here
+```
 
 ### Getting API Key
 
-1. Visit https://www.perplexity.ai/settings/api
-2. Create new API key
-3. Add to `.env` file
+1. Choose your provider
+2. Create an API key in that provider dashboard
+3. Add provider name and key in app settings (recommended) or `.env` fallback
 
 ---
 
-*This documentation covers Contexta from initial release through v1.12.0. For the latest updates, refer to the git commit history.*
+*This documentation covers Contexta from initial release through v1.13.0. For the latest updates, refer to the git commit history.*
 
-*Last updated: February 1, 2026*
+*Last updated: April 18, 2026*
