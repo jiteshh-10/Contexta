@@ -11,6 +11,7 @@
 <p align="center">
   <a href="#features">Features</a> •
   <a href="#screenshots">Screenshots</a> •
+   <a href="docs/AI_SETUP.md">AI Setup</a> •
   <a href="#installation">Installation</a> •
   <a href="#build">Build</a> •
   <a href="#architecture">Architecture</a> •
@@ -29,7 +30,7 @@ When reading challenging literature, encountering an unfamiliar word breaks the 
 
 ### The Solution
 
-Contexta leverages AI (Perplexity API) to explain words in the context of your current book, providing:
+Contexta leverages AI via a user-configured LLM provider to explain words in the context of your current book, providing:
 - A **short definition** (4-5 words)
 - A **contextual explanation** considering the book's themes, genre, and author's style
 
@@ -48,10 +49,11 @@ Contexta leverages AI (Perplexity API) to explain words in the context of your c
 **Use Case:** Build your personal reading collection without internet connectivity
 
 ### 🔍 Contextual Word Explanations (v1.0.0)
-- **AI-powered explanations** using Perplexity's `sonar` model
+- **AI-powered explanations** using your configured LLM provider
 - **Book-aware context** - explains words based on book title, author, and genre
 - **Two-part format** - short definition (4-5 words) + detailed explanation (2-3 sentences)
 - **Smart response handling** - automatically extracts structured responses
+- **Shared master prompt** - consistent, non-vague output quality across all AI features
 - **Error handling** - graceful fallback when API is unavailable
 - **Timeout protection** - 30-second request timeout to prevent hanging
 
@@ -197,7 +199,7 @@ Contexta leverages AI (Perplexity API) to explain words in the context of your c
 - Book Flies: 440ms with -50px arc (authentic trajectory)
 - Highlight Glows: 250ms in → 350ms hold → 400ms out
 
-### ☁️ Ownership, Backup & Restore (v1.12.0) ⭐ **Latest**
+### ☁️ Ownership, Backup & Restore (v1.12.0)
 - **User-first data ownership** - choose local-only or cloud backup at first launch
 - **Google Sign-In integration** - secure authentication via Firebase Auth
 - **Automatic cloud backup** - debounced 3-second backup on every change
@@ -223,6 +225,16 @@ Contexta leverages AI (Perplexity API) to explain words in the context of your c
 - "Sync Across Devices" - sign in with Google for cloud backup
 - "You can change this later in Settings"
 
+### 🤖 Open-Source AI Key Management (v1.13.0) ⭐ **Latest**
+- **Provider-agnostic routing** - AI requests are routed based on your provider name
+- **User-owned API keys** - each user adds their own key in Settings → AI provider & key
+- **Secure storage** - keys are stored locally using encrypted secure storage
+- **No maintainer credit leakage** - open-source builds do not depend on a shared project key
+- **Actionable key popups** - missing, invalid, expired, or quota-exceeded keys trigger clear guidance
+- **Master prompt standardization** - same quality baseline prompt is applied across AI tasks
+
+**Use Case:** Safely run Contexta as an open-source app where every user controls their own LLM credentials and usage costs.
+
 ---
 
 ## Feature Roadmap & Versions
@@ -241,7 +253,8 @@ Contexta leverages AI (Perplexity API) to explain words in the context of your c
 | v1.9.0 | Shelf Interaction (Premium UX) | Jan 2026 | ✅ Stable |
 | v1.10.0 | Gentle Suggestions | Jan 2026 | ✅ Stable |
 | v1.11.0 | Book Suggestions | Jan 2026 | ✅ Stable |
-| v1.12.0 | Ownership, Backup & Restore | Feb 2026 | ✅ Latest |
+| v1.12.0 | Ownership, Backup & Restore | Feb 2026 | ✅ Stable |
+| v1.13.0 | Multi-Provider AI + User-Owned Keys + Master Prompt | Apr 2026 | ✅ Latest |
 
 ---
 
@@ -381,7 +394,7 @@ Unlike traditional dictionaries that give generic definitions, Contexta understa
 - Flutter SDK ^3.7.2
 - Dart SDK ^3.7.2
 - Android Studio / VS Code
-- Perplexity API key
+- LLM provider name and API key
 
 ### Setup
 
@@ -396,16 +409,22 @@ Unlike traditional dictionaries that give generic definitions, Contexta understa
    flutter pub get
    ```
 
-3. **Configure API key**
-   
-   Create a `.env` file in the project root:
+3. **Run the app and add your provider name + API key**
+
+   - Open **Settings → AI provider & key**
+   - Enter your provider name (for example: Gemini, Perplexity, OpenAI, Anthropic)
+   - Paste your API key
+   - Save securely on-device
+
+4. **(Optional) local dev fallback via `.env`**
+
+   Create a `.env` file in the project root only if you want local fallback credentials:
    ```env
-   # Perplexity API Configuration
-   # Get your API key from: https://www.perplexity.ai/settings/api
-   PERPLEXITY_API_KEY=your_api_key_here
+   LLM_PROVIDER_NAME=your_provider_name_here
+   LLM_API_KEY=your_api_key_here
    ```
 
-4. **Run the app**
+5. **Run the app**
    ```bash
    flutter run
    ```
@@ -470,7 +489,10 @@ lib/
 │   ├── book_detail_screen.dart  # Book words & input
 │   └── add_book_screen.dart  # [Deprecated] Add new book form (replaced by shelf)
 ├── services/
-│   ├── perplexity_service.dart  # AI API integration
+│   ├── llm_explanation_service.dart  # AI word explanations (provider-agnostic)
+│   ├── llm_credentials_service.dart  # Secure per-user API key storage
+│   ├── gemini_error_mapper.dart  # Typed LLM error handling
+│   ├── llm_gateway_service.dart  # Provider routing + transport adapters
 │   └── storage_service.dart     # Local persistence
 ├── theme/
 │   └── app_theme.dart        # Design tokens & themes
@@ -507,11 +529,13 @@ State Update → StorageService.save() → UI Rebuild
 
 ### API Integration (v1.0.0)
 
-**Perplexity API** is used for contextual word explanations:
-- Model: `sonar` (fast, accurate)
+**Provider-agnostic AI gateway** is used for contextual word explanations and suggestions:
+- Provider selected from user-entered provider name
+- Supports multiple transports: Gemini, OpenAI-compatible, Anthropic
+- Model profile inferred from provider name
 - Max tokens: 300 (controls response length)
 - Temperature: 0.3 (focused, less creative)
-- Custom system prompt for literary context
+- Shared master prompt + task-specific prompt composition
 - Timeout: 30 seconds
 
 **Explanation Levels (v1.1.0):**
@@ -660,6 +684,7 @@ dependencies:
   cupertino_icons: ^1.0.8         # iOS-style icons
   http: ^1.2.0                     # HTTP client for API
   shared_preferences: ^2.2.2       # Local storage
+   flutter_secure_storage: ^9.2.2   # Encrypted key storage
   flutter_dotenv: ^5.1.0           # Environment config
   sqflite: ^2.4.2                  # SQLite database
   path: ^1.9.1                     # Path utilities
@@ -681,18 +706,23 @@ dev_dependencies:
 
 ## Configuration
 
+User API keys are managed in-app via **Settings → AI provider & key**.
+See [docs/AI_SETUP.md](docs/AI_SETUP.md) for full setup and key-expiry popup guidance.
+
 ### Environment Variables
 
 | Variable | Description | Required |
 |----------|-------------|----------|
-| `PERPLEXITY_API_KEY` | API key for Perplexity AI | Yes |
+| `LLM_PROVIDER_NAME` | Optional local fallback provider name | No |
+| `LLM_API_KEY` | Optional local fallback API key | No |
 
 ### API Configuration
 
 Located in `lib/config/api_config.dart`:
 
 ```dart
-static const String perplexityModel = 'sonar';
+static const String _fallbackEnvProviderKeyName = 'LLM_PROVIDER_NAME';
+static const String _fallbackEnvApiKeyName = 'LLM_API_KEY';
 static const int maxTokens = 300;
 static const double temperature = 0.3;
 static const Duration requestTimeout = Duration(seconds: 30);
@@ -718,7 +748,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## Acknowledgments
 
-- **Perplexity AI** for the contextual explanation API
+- LLM provider communities for robust API ecosystems
 - **Flutter Team** for the amazing framework
 - Design inspiration from minimalist reading apps and physical journals
 

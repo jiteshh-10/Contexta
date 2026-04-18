@@ -16,10 +16,13 @@ import '../widgets/explanation_level_selector.dart';
 import '../widgets/word_frequency_card.dart';
 import '../widgets/export_options_sheet.dart';
 import '../widgets/spelling_suggestion.dart';
-import '../services/perplexity_service.dart';
+import '../widgets/ai_key_issue_dialog.dart';
+import '../models/ai_request_error.dart';
+import '../services/llm_explanation_service.dart';
 import '../services/storage_service.dart';
 import '../services/reading_streak_service.dart';
 import '../services/spelling_suggestion_service.dart';
+import 'ai_settings_screen.dart';
 
 /// Sort options for word collection
 enum SortOption {
@@ -53,7 +56,7 @@ class BookDetailScreen extends StatefulWidget {
 class _BookDetailScreenState extends State<BookDetailScreen> {
   final TextEditingController _wordController = TextEditingController();
   final FocusNode _wordFocusNode = FocusNode();
-  final PerplexityService _perplexityService = PerplexityService();
+  final LlmExplanationService _llmService = LlmExplanationService();
   final StorageService _storageService = StorageService();
   final SpellingSuggestionService _spellingService =
       SpellingSuggestionService();
@@ -164,7 +167,7 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
     _explainWord();
   }
 
-  /// Handle word explanation using Perplexity API
+  /// Handle word explanation using the configured LLM provider.
   void _explainWord() async {
     final word = _wordController.text.trim();
     if (word.isEmpty) return;
@@ -180,8 +183,7 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
     // Haptic feedback
     HapticFeedback.lightImpact();
 
-    // Call Perplexity API for contextual explanation with selected level
-    final result = await _perplexityService.explainWord(
+    final result = await _llmService.explainWord(
       word: word,
       bookTitle: widget.book.title,
       bookAuthor: widget.book.author,
@@ -243,8 +245,21 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
       // Haptic feedback on error
       HapticFeedback.heavyImpact();
 
-      // Show error snackbar
-      if (mounted) {
+      if (!mounted) return;
+
+      if (result.errorType == AiRequestErrorType.keyMissing ||
+          result.errorType == AiRequestErrorType.keyInvalid ||
+          result.errorType == AiRequestErrorType.keyExpired ||
+          result.errorType == AiRequestErrorType.quotaExceeded) {
+        await showAiCredentialIssueDialog(
+          context: context,
+          error: AiRequestError(
+            type: result.errorType,
+            message: _errorMessage ?? 'Unable to use AI right now.',
+          ),
+          onOpenSettings: _openAiSettings,
+        );
+      } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(_errorMessage!),
@@ -263,6 +278,12 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
         );
       }
     }
+  }
+
+  void _openAiSettings() {
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => const AiSettingsScreen()));
   }
 
   /// Show export options sheet
@@ -376,9 +397,9 @@ class _BookDetailScreenState extends State<BookDetailScreen> {
     );
   }
 
-  /// Get explanation for a word from Perplexity API
+  /// Get explanation for a word from the configured LLM provider.
   Future<String?> _getExplanation(String word) async {
-    final result = await _perplexityService.explainWord(
+    final result = await _llmService.explainWord(
       word: word,
       bookTitle: widget.book.title,
       bookAuthor: widget.book.author,

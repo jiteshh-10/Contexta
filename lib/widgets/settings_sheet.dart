@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../theme/app_theme.dart';
 import '../models/book.dart';
+import '../screens/ai_settings_screen.dart';
 import '../screens/backup_settings_screen.dart';
 
 /// Settings bottom sheet for app preferences
@@ -9,6 +10,7 @@ import '../screens/backup_settings_screen.dart';
 /// Currently includes:
 /// - Theme mode toggle
 /// - Reading consistency indicator toggle
+/// - AI provider and key management
 /// - Library backup
 /// - Export all words option
 class SettingsSheet extends StatefulWidget {
@@ -155,6 +157,28 @@ class _SettingsSheetState extends State<SettingsSheet> {
                         (context) => BackupSettingsScreen(
                           onLibraryChanged: widget.onLibraryChanged,
                         ),
+                  ),
+                );
+              });
+            },
+          ),
+
+          const SizedBox(height: 12),
+
+          // AI settings navigation
+          _SettingsNavigation(
+            title: 'AI provider & key',
+            description:
+                'Set provider name and your own API key, stored securely on device',
+            icon: Icons.key_outlined,
+            onTap: () {
+              HapticFeedback.lightImpact();
+              final navigator = Navigator.of(context);
+              widget.onClose();
+              Future.delayed(const Duration(milliseconds: 200), () {
+                navigator.push(
+                  MaterialPageRoute(
+                    builder: (context) => const AiSettingsScreen(),
                   ),
                 );
               });

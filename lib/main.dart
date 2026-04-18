@@ -14,6 +14,7 @@ import 'services/connectivity_service.dart';
 import 'services/reading_streak_service.dart';
 import 'services/auth_service.dart';
 import 'services/backup_service.dart';
+import 'services/llm_credentials_service.dart';
 
 /// Global flag indicating if Firebase is available
 bool isFirebaseAvailable = false;
@@ -71,6 +72,10 @@ Future<void> _initializeServices() async {
   // Initialize auth service (for backup/restore)
   await AuthService().initialize();
   debugPrint('AuthService: Initialized');
+
+  // Initialize secure LLM credentials storage
+  await LlmCredentialsService().initialize();
+  debugPrint('LlmCredentialsService: Initialized');
 }
 
 /// Main application widget
